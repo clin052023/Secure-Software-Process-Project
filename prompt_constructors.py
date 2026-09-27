@@ -1,5 +1,7 @@
-# Courtney Lin, Nicholas Marden
-# Task 1 - Extractor
+''' 
+Courtney Lin, Nicholas Marden
+Task 1 - Extractor
+'''
 
 # ---------------------------------- #
 #     Prompt Generator Functions     #
@@ -12,15 +14,19 @@
 #    Zero Shot Prompt   #
 # --------------------- #
 
-
+def zero_shot():
+    return
 
 # -------------------- #
 #    Few Shot Prompt   #
 # -------------------- #
 
-
+def few_shot():
+    return
 
 # ----------------------------- #
 #     Chain-of-Thought Prompt   #
 # ----------------------------- #
 
+def chain_of_thought():
+    return 

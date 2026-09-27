@@ -1,5 +1,7 @@
-# Courtney Lin, Nicholas Marden
-# Task 1 - Extractor
+''' 
+Courtney Lin, Nicholas Marden
+Task 1 - Extractor
+'''
 
 # ------------------------------------- #
 #          - Extractor File -           #
@@ -8,16 +10,45 @@
 # ------------------------------------- #
 
 # import prompt_constructors.py files and other libraries here if needed
-
+import prompt_constructors
+from pypdf import PdfReader
+# run in terminal: pip install pypdf
 
 # --------------------------- #
 #     PDF Document Reader     #
 # --------------------------- #
 
-# Takes two documents as input and applies adequate input validation methods.
+# Takes a document as input and applies adequate input validation methods.
 # Probably means to make sure the files are valid types like PDFs.
+# The plan is to call this function twice; once for each of the two documents that we're comparing.
 
+def document_reader(doc_path):
 
+    # Checking to see if the file exists first; if it doesn't, then it an error is raised.
+
+    if not doc_path.isfile():
+        raise FileNotFoundError(f"File not found: {doc_path}")
+
+    # Checking the PDF file header signature to make sure it is a PDF file.
+    # The first 5 bytes should resemble '%PDF-'.
+    
+    with open(doc_path, 'rb') as f:
+        file_header = f.read(5)
+    if file_header != b'%PDF-':
+        raise ValueError(f"Invalid File Type: '{doc_path}'. Input must be a PDF file.")
+
+    # Now we read the file and turn the PDF text into a regular continuous Python string
+    
+    reader = PdfReader(doc_path)
+    text = ""
+    for page in reader.pages:
+        extracted = page.extract_text()
+        if extracted:
+            text += extracted.strip() + "\n"
+
+    # Clean up any leading/trailing spaces/tabs/newlines from the string and return it.
+
+    return text.strip()
 
 # --------------------------- #
 #     Gemma-3-1B Function     #
@@ -41,6 +72,9 @@
 # And this is saved into a YAML file, which is named after the input document.
 # (ex. cis-r1-kdes.yaml)
 
+def gemma_3_1b(doc1, doc2):
+
+    return
 
 
 # ---------------------------------- #
@@ -58,3 +92,7 @@
     *LLM Output*
 
 """
+
+def output_txt_collector():
+
+    return
