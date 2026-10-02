@@ -1,0 +1,241 @@
+element1:
+  name: Correct
+  requirements:
+  - '03.24'
+  - '04.2'
+  - '04.3'
+  - '04.4'
+  - '04.6'
+  - '04.7'
+  - '04.8'
+element2:
+  name: 'Yes'
+  requirements:
+  - '02.8'
+  - '03.2'
+  - '03.2'
+  - '03.2'
+  - '03.3'
+  - '04.2'
+  - '04.4'
+  - '04.6'
+  - '04.6'
+element3:
+  name: Correctly
+  requirements:
+  - '03.24'
+  - '04.2'
+  - '04.3'
+  - '04.4'
+  - '04.6'
+  - '04.7'
+  - '04.8'
+element4:
+  name: Avoided
+  requirements:
+  - '06.1'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+element5:
+  name: Ensure
+  requirements:
+  - '02.2'
+  - '03.2'
+  - '03.3'
+  - '03.2'
+  - '04.2'
+  - '04.2'
+  - '04.2'
+  - '04.2'
+element6:
+  name: Bind to
+  requirements:
+  - '02.15'
+  - '04.1'
+  - '04.2'
+  - '04.3'
+  - '04.3'
+  - '06.1'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+element7:
+  name: Is Not Used
+  requirements:
+  - '05.2'
+  - '05.3'
+  - '05.3'
+  - '05.3'
+  - '05.2'
+  - '05.2'
+  - '05.2'
+  - '05.2'
+element8:
+  name: Not Updated
+  requirements:
+  - '05.2'
+  - '05.3'
+  - '05.3'
+  - '05.3'
+  - '05.2'
+  - '05.2'
+  - '05.2'
+  - '05.2'
+element9:
+  name: Not Unmapped
+  requirements:
+  - '06.1'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.1'
+  - '06.2'
+  - '06.2'
+  - '06.1'
+element10:
+  name: Not Shared
+  requirements:
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.1'
+  - '06.1'
+  - '06.2'
+  - '06.2'
+element11:
+  name: Not Mounted
+  requirements:
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.2'
+  - '06.1'
+  - '06.2'
+element12:
+  name: System Configuration
+  requirements:
+  - req1
+  - req2
+  - req3
+element13:
+  name: Container Security
+  requirements:
+  - req1
+  - req2
+  - req3
+element14:
+  name: Image Management
+  requirements:
+  - req1
+  - req2
+  - req3
+element15:
+  name: Security Scanning
+  requirements:
+  - req1
+  - req2
+  - req3
+element16:
+  name: Dockerfile Best Practices
+  requirements:
+  - req1
+  - req2
+  - req3
+element17:
+  name: Docker Swarm
+  requirements:
+  - req1
+  - req2
+  - req3
+element18:
+  name: OS Firewall Security
+  requirements:
+  - req1
+  - req2
+  - req3
+element19:
+  name: Kernel Control
+  requirements:
+  - req1
+  - req2
+  - req3
+element20:
+  name: Container Resource Limits
+  requirements:
+  - req1
+  - req2
+  - req3
+element21:
+  name: Container Health Checks
+  requirements:
+  - req1
+  - req2
+  - req3
+element22:
+  name: Container Image Security
+  requirements:
+  - req1
+  - req2
+  - req3
+element23:
+  name: UID/GID Restriction
+  requirements:
+  - req1
+  - req2
+  - req3
+element24:
+  name: UNMapping Compliance
+  requirements:
+  - req1
+  - req2
+  - req3
+element25:
+  name: OS Unmapping
+  requirements:
+  - req1
+  - req2
+  - req3
+element26:
+  name: UTS Namespace
+  requirements:
+  - req1
+  - req2
+  - req3
+element27:
+  name: SECPOM Profile
+  requirements:
+  - req1
+  - req2
+  - req3
+element28:
+  name: Swarm Management
+  requirements:
+  - req1
+  - req2
+  - req3
+element29:
+  name: Swarm Overlay Network
+  requirements:
+  - req1
+  - req2
+  - req3
+element30:
+  name: Cgroup
+  requirements:
+  - req1
+  - req2
+  - req3
+element31:
+  name: Docker Socket Mounting
+  requirements:
+  - req1
+  - req2
+  - req3

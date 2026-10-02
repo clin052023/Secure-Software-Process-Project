@@ -1,0 +1,232 @@
+element1:
+  name: Correctly
+  requirements:
+  - req1
+  - req2
+  - req3
+element2:
+  name: Yes No
+  requirements:
+  - req1
+  - req2
+  - req3
+element3:
+  name: Ensure swarm mode is not Enabled
+  requirements:
+  - req1
+  - req2
+  - req3
+element4:
+  name: Ensure AppArmor Profile is enabled
+  requirements:
+  - req1
+  - req2
+  - req3
+element5:
+  name: Ensure SELinux Security Options are set
+  requirements:
+  - req1
+  - req2
+  - req3
+element6:
+  name: Ensure Linux kernel capabilities are restricted within
+  requirements:
+  - req1
+  - req2
+  - req3
+element7:
+  name: Ensure privileged containers are not used
+  requirements:
+  - req1
+  - req2
+  - req3
+element8:
+  name: Ensure container is restricted from acquiring new
+  requirements:
+  - req1
+  - req2
+  - req3
+element9:
+  name: Ensure update instructions are not used alone in
+  requirements:
+  - req1
+  - req2
+  - req3
+element10:
+  name: Ensure only verified packages are installed
+  requirements:
+  - req1
+  - req2
+  - req3
+element11:
+  name: Ensure only validated packages are installed
+  requirements:
+  - req1
+  - req2
+  - req3
+element12:
+  name: Ensure all signatures are validated
+  requirements:
+  - req1
+  - req2
+  - req3
+element13:
+  name: Ensure Host device permissions are not shared
+  requirements:
+  - req1
+  - req2
+  - req3
+element14:
+  name: Ensure container is restricted from acquiring additional privileges
+  requirements:
+  - req1
+  - req2
+  - req3
+element15:
+  name: Ensure container health is checked at runtime
+  requirements:
+  - req1
+  - req2
+  - req3
+element16:
+  name: Ensure container sprawl is avoided
+  requirements:
+  - req1
+  - req2
+  - req3
+element17:
+  name: Ensure all Docker swarm overlay networks are encrypted
+  requirements:
+  - req1
+  - req2
+  - req3
+element18:
+  name: Ensure swarm manager auto-lock key is rotated periodically
+  requirements:
+  - req1
+  - req2
+  - req3
+  - req4
+element19:
+  name: Ensure node certificates are rotated as appropriate
+  requirements:
+  - req1
+  - req2
+  - req3
+element20:
+  name: Ensure CA certificates are rotated as appropriate
+  requirements:
+  - req1
+  - req2
+  - req3
+element21:
+  name: Ensure management plane traffic is separated from data plane traffic
+  requirements:
+  - req1
+  - req2
+  - req3
+element22:
+  name: Docker service file ownership
+  requirements:
+  - req1
+  - req2
+  - req3
+element23:
+  name: Docker service file permissions
+  requirements:
+  - req1
+  - req2
+  - req3
+element24:
+  name: Docker socket file ownership
+  requirements:
+  - req1
+  - req2
+  - req3
+element25:
+  name: Docker socket file permissions
+  requirements:
+  - req1
+  - req2
+  - req3
+element26:
+  name: Docker server certificate file ownership
+  requirements:
+  - req1
+  - req2
+  - req3
+element27:
+  name: Docker server certificate file permissions
+  requirements:
+  - req1
+  - req2
+element28:
+  name: Docker daemon.json file ownership
+  requirements:
+  - req1
+  - req2
+element29:
+  name: Docker daemon.json file permissions
+  requirements:
+  - req1
+  - req2
+element30:
+  name: Containerd socket file ownership
+  requirements:
+  - req1
+  - req2
+element31:
+  name: Containerd socket file permissions
+  requirements:
+  - req1
+  - req2
+element32:
+  name: Docker server certificate key file ownership
+  requirements:
+  - req1
+  - req2
+element33:
+  name: Docker server certificate key file permissions
+  requirements:
+  - req1
+  - req2
+element34:
+  name: Daemon.json file ownership
+  requirements:
+  - req1
+  - req2
+element35:
+  name: Daemon.json file permissions
+  requirements: []
+element36:
+  name: Docker swarm overlay network
+  requirements:
+  - req1
+  - req2
+element37:
+  name: Docker swarm manager auto-lock
+  requirements:
+  - req1
+  - req2
+element38:
+  name: Docker swarm manager auto-lock key
+  requirements: []
+element39:
+  name: Docker swarm manager configuration
+  requirements:
+  - req1
+element40:
+  name: Docker swarm manager config
+  requirements: []
+element41:
+  name: Docker swarm manager config rules
+  requirements: []
+element42:
+  name: docker daemon.json permissions
+  requirements: []
+element43:
+  name: Docker socket ownership
+  requirements: []
+element44:
+  name: Docker socket permissions
+  requirements: []

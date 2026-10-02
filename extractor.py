@@ -11,10 +11,15 @@ Task 1 - Extractor
 
 # import prompt_constructors.py files and other libraries here if needed
 from prompt_constructors import zero_shot, few_shot, chain_of_thought
-# run in terminal: pip install pypdf
+# run in terminal: pip install pypdf AND python needs to be 3.8+ to work
 from pypdf import PdfReader
+from pypdf.errors import PdfReadError
 # to check if path exists
 import os
+
+import re
+import yaml
+import requests
 
 
 # --------------------------- #
@@ -75,9 +80,149 @@ def document_reader(doc_path):
 # And this is saved into a YAML file, which is named after the input document.
 # (ex. cis-r1-kdes.yaml)
 
-def gemma_3_1b(doc1_str, doc2_str):
 
-    return
+# LLM Setup: Gemma-3-1B is ran locally through Ollama.
+# Before running, install it and pull the model once:
+#   1) install Ollama:  https://ollama.com/download
+#   2) ollama pull gemma3:1b
+#   3) keep the Ollama app/daemon running while this script executes.
+GEMMA_MODEL = "gemma3:1b"
+LLM_NAME = "Gemma-3-1B"
+OLLAMA_URL = "http://localhost:11434/api/generate"
+
+# Every LLM call made through gemma_3_1b is logged here so that
+# output_txt_collector() can dump them all to a TEXT file later.
+LLM_LOG = []
+
+def _call_gemma(prompt, model=GEMMA_MODEL):
+    # Sends one prompt to the local Gemma-3-1B model through Ollama and returns the raw response string.
+    response = requests.post(
+        OLLAMA_URL,
+        json={"model": model, "prompt": prompt, "stream": False},
+        timeout=600,
+    )
+    response.raise_for_status()
+    return response.json().get("response", "")
+
+
+def _clean_yaml_output(raw):
+    # Cleans up the LLM's raw output so it can be parsed as YAML.
+    # Chain-of-thought output gets its reasoning stripped first; the final YAML
+    # comes after the divider the CoT prompt asks for.
+    if "--- YAML ---" in raw:
+        raw = raw.split("--- YAML ---", 1)[1]
+
+    # Strip markdown code fences if Gemma added them anyway.
+    fence = re.search(r"```(?:ya?ml)?\s*(.*?)```", raw, re.DOTALL)
+    if fence:
+        raw = fence.group(1)
+
+    return raw.strip()
+
+
+def _parse_llm_output(raw):
+    # Turns the cleaned raw output into a Python object (list or dict), or None if it can't be parsed.
+    cleaned = _clean_yaml_output(raw)
+    try:
+        data = yaml.safe_load(cleaned)
+    except yaml.YAMLError:
+        return None
+    if not isinstance(data, (list, dict)):
+        return None
+    return data
+
+
+def _extract_elements(data):
+    # Flattens any parsed output into a simple list of {"name": ..., "requirements": [...]}.
+    elements = []
+    if isinstance(data, dict):
+        items = list(data.items())
+    elif isinstance(data, list):
+        # A list of single-key dicts: [{"element1": {...}}, {"element2": {...}}]
+        items = [(k, v) for d in data if isinstance(d, dict) for k, v in d.items()]
+    else:
+        return elements
+
+    for key, value in items:
+        if not isinstance(value, dict):
+            continue
+        name = str(value.get("name", key)).strip() or str(key)
+        reqs = value.get("requirements", [])
+        if isinstance(reqs, str):
+            reqs = [reqs]
+        reqs = [str(r).strip() for r in (reqs or []) if str(r).strip()]
+        elements.append({"name": name, "requirements": reqs})
+    return elements
+
+
+def _merge_elements(parsed_outputs):
+    # Merges the KDEs from all three prompt types into one nested dictionary.
+    # One KDE can map to multiple requirements: if the same KDE name shows up in
+    # more than one prompt's output, its requirement lists get combined (no duplicates).
+    merged = []
+    for elements in parsed_outputs:
+        for element in elements:
+            for existing in merged:
+                if existing["name"].lower() == element["name"].lower():
+                    for req in element["requirements"]:
+                        if req not in existing["requirements"]:
+                            existing["requirements"].append(req)
+                    break
+            else:
+                merged.append({"name": element["name"], "requirements": list(element["requirements"])})
+
+    nested = {}
+    for i, element in enumerate(merged, start=1):
+        nested[f"element{i}"] = {
+            "name": element["name"],
+            "requirements": element["requirements"],
+        }
+    return nested
+
+
+def _run_prompt(prompt_text, prompt_type, doc_name, llm_fn=None):
+    # Runs one prompt through the LLM, logs the call, and parses the output.
+    # llm_fn lets a test inject a fake LLM; production calls go through _call_gemma().
+    raw = llm_fn(prompt_text) if llm_fn is not None else _call_gemma(prompt_text)
+
+    LLM_LOG.append({
+        "llm": LLM_NAME,
+        "prompt": prompt_text,
+        "type": prompt_type,
+        "output": raw,
+        "doc": doc_name,
+    })
+
+    return _parse_llm_output(raw)
+
+
+def gemma_3_1b(doc1_str, doc2_str, doc1_name="docker-cis-v0.pdf", doc2_name="docker-cis-v1.pdf", yaml_dir=".", llm_fn=None):
+
+    # Runs each of the three constructed prompts against each document, then merges
+    # the results into one nested KDE dictionary per document and saves it as YAML.
+    # The YAML file names are built from the input document names:
+    #   'docker-cis-v0.pdf' -> 'docker-cis-v0-kdes.yaml'
+    results = {}
+
+    for doc_name, doc_text in ((doc1_name, doc1_str), (doc2_name, doc2_str)):
+        parsed_outputs = [
+            _run_prompt(zero_shot(doc_text),        "zero-shot",        doc_name, llm_fn),
+            _run_prompt(few_shot(doc_text),         "few-shot",         doc_name, llm_fn),
+            _run_prompt(chain_of_thought(doc_text), "chain-of-thought", doc_name, llm_fn),
+        ]
+
+        # Drop any output that couldn't be parsed, then merge what's left.
+        parsed_outputs = [elements for elements in parsed_outputs if elements is not None]
+        nested = _merge_elements([_extract_elements(d) for d in parsed_outputs])
+
+        stem = os.path.splitext(os.path.basename(str(doc_name)))[0]
+        yaml_path = os.path.join(yaml_dir, f"{stem}-kdes.yaml")
+        with open(yaml_path, "w", encoding="utf-8") as f:
+            yaml.safe_dump(nested, f, sort_keys=False, allow_unicode=True)
+
+        results[os.path.basename(str(doc_name))] = nested
+
+    return results
 
 
 # ---------------------------------- #
@@ -96,6 +241,24 @@ def gemma_3_1b(doc1_str, doc2_str):
 
 """
 
-def output_txt_collector():
+def output_txt_collector(txt_path="llm-outputs.txt", log=LLM_LOG):
+    if not log:
+        raise ValueError("No LLM calls have been recorded yet. Run gemma_3_1b() first.")
 
-    return
+    blocks = []
+    for entry in log:
+        blocks.append(
+            "*LLM Name*\n"
+            f"{entry['llm']}\n"
+            "*Prompt Used*\n"
+            f"{entry['prompt']}\n"
+            "*Prompt Type (zero-shot, few-shot, chain-of-thought)*\n"
+            f"{entry['type']}\n"
+            "*LLM Output*\n"
+            f"{entry['output'].strip() if entry['output'].strip() else '(no output)'}\n"
+        )
+
+    with open(txt_path, "w", encoding="utf-8") as f:
+        f.write("\n".join(blocks))
+
+    return txt_path
