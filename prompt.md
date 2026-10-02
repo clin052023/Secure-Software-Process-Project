@@ -1,7 +1,7 @@
 # Prompt.md File
 *Courtney Lin, Nicholas Marden*
 
-**All prompts used during Task 1 of the project are stored here:**
+**All prompts used during Task 1 (Extractor):**
 
 ## Zero-Shot Prompts
 

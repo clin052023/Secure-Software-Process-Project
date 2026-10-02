@@ -10,9 +10,12 @@ Task 1 - Extractor
 # ------------------------------------- #
 
 # import prompt_constructors.py files and other libraries here if needed
-import prompt_constructors
-from pypdf import PdfReader
+from prompt_constructors import zero_shot, few_shot, chain_of_thought
 # run in terminal: pip install pypdf
+from pypdf import PdfReader
+# to check if path exists
+import os
+
 
 # --------------------------- #
 #     PDF Document Reader     #
@@ -26,7 +29,7 @@ def document_reader(doc_path):
 
     # Checking to see if the file exists first; if it doesn't, then it an error is raised.
 
-    if not doc_path.isfile():
+    if not os.path.isfile(doc_path):
         raise FileNotFoundError(f"File not found: {doc_path}")
 
     # Checking the PDF file header signature to make sure it is a PDF file.
@@ -60,19 +63,19 @@ def document_reader(doc_path):
 
 # This function also generates a nested dictionary in this format:
 """
-    - element1:
-        - name:
-        - requirements:
-            - req1
-            - req2
-            - req3
-            ...
+- element1:
+    name:
+    requirements:
+      - req1
+      - req2
+      - req3
+        ...
     ...
 """
 # And this is saved into a YAML file, which is named after the input document.
 # (ex. cis-r1-kdes.yaml)
 
-def gemma_3_1b(doc1, doc2):
+def gemma_3_1b(doc1_str, doc2_str):
 
     return
 
