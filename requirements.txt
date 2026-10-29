@@ -1,0 +1,5 @@
+pypdf
+pyyaml
+torch
+transformers
+accelerate

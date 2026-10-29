@@ -11,15 +11,15 @@ Task 1 - Extractor
 
 # import prompt_constructors.py files and other libraries here if needed
 from prompt_constructors import zero_shot, few_shot, chain_of_thought
-# run in terminal: pip install pypdf AND python needs to be 3.8+ to work
+# run in terminal: pip install pypdf pyyaml torch transformers accelerate
 from pypdf import PdfReader
 from pypdf.errors import PdfReadError
 # to check if path exists
 import os
-
+# for cleaning up Gemma's output before parsing it as YAML
 import re
+# for parsing the LLM output into a nested dictionary and dumping it to YAML files
 import yaml
-import requests
 
 
 # --------------------------- #
@@ -32,31 +32,52 @@ import requests
 
 def document_reader(doc_path):
 
-    # Checking to see if the file exists first; if it doesn't, then it an error is raised.
+    # Input validation: the path must be a non-empty string.
+    if not isinstance(doc_path, str) or not doc_path.strip():
+        raise TypeError("Input must be a non-empty file path string.")
 
+    # Checking to see if the file exists first; if it doesn't, then it an error is raised.
     if not os.path.isfile(doc_path):
         raise FileNotFoundError(f"File not found: {doc_path}")
 
+    # Input validation: make sure the file has a .pdf extension.
+    if not doc_path.lower().endswith(".pdf"):
+        raise ValueError(f"Invalid File Extension: '{doc_path}'. Input must be a PDF file.")
+
     # Checking the PDF file header signature to make sure it is a PDF file.
     # The first 5 bytes should resemble '%PDF-'.
-    
     with open(doc_path, 'rb') as f:
         file_header = f.read(5)
     if file_header != b'%PDF-':
         raise ValueError(f"Invalid File Type: '{doc_path}'. Input must be a PDF file.")
 
+    # Input validation: try to open the file with PdfReader; a corrupt PDF raises here too.
+    try:
+        reader = PdfReader(doc_path)
+    except PdfReadError as e:
+        raise ValueError(f"Corrupt or unreadable PDF: '{doc_path}'. ({e})") from e
+
+    # Input validation: a PDF with no readable pages has nothing for the LLM to work with.
+    if not reader.pages:
+        raise ValueError(f"Empty PDF: '{doc_path}'. No readable pages found.")
+
     # Now we read the file and turn the PDF text into a regular continuous Python string
-    
-    reader = PdfReader(doc_path)
     text = ""
     for page in reader.pages:
-        extracted = page.extract_text()
+        try:
+            extracted = page.extract_text()
+        except Exception as e:
+            raise ValueError(f"Unreadable page in '{doc_path}'. ({e})") from e
         if extracted:
             text += extracted.strip() + "\n"
 
-    # Clean up any leading/trailing spaces/tabs/newlines from the string and return it.
+    # Input validation: make sure we actually extracted some text out of the PDF.
+    if not text.strip():
+        raise ValueError(f"No extractable text: '{doc_path}'. The PDF may be scanned images only.")
 
+    # Clean up any leading/trailing spaces/tabs/newlines from the string and return it.
     return text.strip()
+
 
 # --------------------------- #
 #     Gemma-3-1B Function     #
@@ -75,34 +96,125 @@ def document_reader(doc_path):
       - req2
       - req3
         ...
-    ...
 """
+
 # And this is saved into a YAML file, which is named after the input document.
 # (ex. cis-r1-kdes.yaml)
 
-
-# LLM Setup: Gemma-3-1B is ran locally through Ollama.
-# Before running, install it and pull the model once:
-#   1) install Ollama:  https://ollama.com/download
-#   2) ollama pull gemma3:1b
-#   3) keep the Ollama app/daemon running while this script executes.
-GEMMA_MODEL = "gemma3:1b"
+# LLM setup: Gemma-3-1B is run locally through Hugging Face (transformers).
+#
+# One-time setup:
+#   1) install the libraries:   pip install torch transformers accelerate
+#   2) Gemma is a GATED model. Accept the license once at:
+#      https://huggingface.co/google/gemma-3-1b-it
+#   3) use your Hugging Face READ token, either with `huggingface-cli login`
+#      (stored on disk) or by setting the environment variable HF_TOKEN before
+#      running this script (see the HF_TOKEN line below).
+#   4) the weights (~2 GB) download automatically on the first call and are
+#      then cached in ~/.cache/huggingface, so later runs start instantly.
+HF_MODEL_ID = "google/gemma-3-1b-it"
 LLM_NAME = "Gemma-3-1B"
-OLLAMA_URL = "http://localhost:11434/api/generate"
+
+# Your Hugging Face read token. If the environment variable HF_TOKEN is set it is
+# used automatically; otherwise paste the token between the quotes. It only needs
+# to be set if you have not run `huggingface-cli login`. Never commit a real token.
+HF_TOKEN = os.environ.get("HF_TOKEN", "")
+
+# How many tokens the model may generate for one requirement-extraction answer.
+MAX_NEW_TOKENS = 2048
+
+# The full CIS benchmark PDFs are far longer than Gemma-3-1B can handle in one prompt
+# (the attention mask alone grows with the square of the prompt length, which caused the
+# CUDA out-of-memory error). Documents are therefore split into chunks of at most this many
+# characters (~3k tokens) and each chunk is sent to the model separately.
+CHUNK_CHARS = 48000
 
 # Every LLM call made through gemma_3_1b is logged here so that
 # output_txt_collector() can dump them all to a TEXT file later.
 LLM_LOG = []
 
-def _call_gemma(prompt, model=GEMMA_MODEL):
-    # Sends one prompt to the local Gemma-3-1B model through Ollama and returns the raw response string.
-    response = requests.post(
-        OLLAMA_URL,
-        json={"model": model, "prompt": prompt, "stream": False},
-        timeout=600,
+# The transformers pipeline is loaded once and reused for every call; loading it
+# per call would re-read the 2 GB of weights each time. It stays None until the
+# first call, so importing this module is cheap and needs no torch installed.
+_HF_PIPELINE = None
+
+# Where the model ended up running ("cuda" or "cpu"); set on the first load.
+LLM_DEVICE = None
+
+# Reduces CUDA memory fragmentation. Must be set before torch initialises CUDA,
+# which is why it happens here, at import time (torch is imported lazily below).
+os.environ.setdefault("PYTORCH_CUDA_ALLOC_CONF", "expandable_segments:True")
+
+
+def _build_pipeline(device_map):
+    # Builds the Gemma-3-1B text-generation pipeline on the requested device.
+    # dtype="auto" loads the weights in the checkpoint's own 16-bit format
+    # instead of upcasting to float32, which halves GPU memory use.
+    from transformers import pipeline
+    # Silences the repeated "max_new_tokens / max_length" and other harmless warnings.
+    # Done here (not at the top of the file) so importing this module stays cheap.
+    from transformers.utils import logging as hf_logging
+    hf_logging.set_verbosity_error()
+
+    return pipeline(
+        "text-generation",
+        model=HF_MODEL_ID,
+        token=HF_TOKEN or None,   # None -> falls back to the token saved by `huggingface-cli login`
+        dtype="auto",
+        device_map=device_map,
     )
-    response.raise_for_status()
-    return response.json().get("response", "")
+
+
+def _get_hf_pipeline():
+    # Loads (once) the Gemma-3-1B text-generation pipeline from Hugging Face.
+    # Tries the GPU first and falls back to the CPU if the GPU is out of memory.
+    global _HF_PIPELINE, LLM_DEVICE
+    if _HF_PIPELINE is not None:
+        return _HF_PIPELINE
+
+    try:
+        import torch
+    except ImportError as e:
+        raise ImportError(
+            "Hugging Face backend needs torch and transformers. "
+            "Run: pip install torch transformers accelerate"
+        ) from e
+
+    try:
+        _HF_PIPELINE = _build_pipeline("auto")   # GPU if one has room, CPU otherwise
+    except torch.cuda.OutOfMemoryError:
+        print("GPU out of memory; running Gemma-3-1B on the CPU instead "
+              "(slower, but it will finish).")
+        torch.cuda.empty_cache()
+        _HF_PIPELINE = _build_pipeline("cpu")
+    except RuntimeError as e:
+        # Older torch uses RuntimeError for OOM instead of torch.cuda.OutOfMemoryError.
+        if "out of memory" not in str(e).lower():
+            raise
+        print("GPU out of memory; running Gemma-3-1B on the CPU instead "
+              "(slower, but it will finish).")
+        torch.cuda.empty_cache()
+        _HF_PIPELINE = _build_pipeline("cpu")
+
+    LLM_DEVICE = str(getattr(_HF_PIPELINE, "device", "unknown"))
+    return _HF_PIPELINE
+
+
+def _call_gemma(prompt, max_new_tokens=MAX_NEW_TOKENS):
+    # Sends one prompt to Gemma-3-1B through Hugging Face transformers and
+    # returns the text the model generated (not the prompt it was given).
+    pipe = _get_hf_pipeline()
+
+    # Gemma-3 is an instruction-tuned chat model, so the prompt goes in as a
+    # chat message and the pipeline applies the model's chat template.
+    messages = [{"role": "user", "content": prompt}]
+    result = pipe(messages, max_new_tokens=max_new_tokens, do_sample=False)
+
+    generated = result[0]["generated_text"]
+    if isinstance(generated, list):
+        # Chat input -> the whole conversation comes back; the answer is the last turn.
+        return generated[-1]["content"]
+    return str(generated)
 
 
 def _clean_yaml_output(raw):
@@ -180,6 +292,27 @@ def _merge_elements(parsed_outputs):
     return nested
 
 
+def _chunk_text(text, max_chars=CHUNK_CHARS):
+    # Splits text into chunks of at most max_chars characters, breaking on line boundaries.
+    chunks, current, size = [], [], 0
+    for line in text.splitlines():
+        # A single enormous line is hard-split so no chunk can exceed max_chars.
+        while len(line) > max_chars:
+            if current:
+                chunks.append("\n".join(current))
+                current, size = [], 0
+            chunks.append(line[:max_chars])
+            line = line[max_chars:]
+        if current and size + len(line) + 1 > max_chars:
+            chunks.append("\n".join(current))
+            current, size = [], 0
+        current.append(line)
+        size += len(line) + 1
+    if current:
+        chunks.append("\n".join(current))
+    return chunks
+
+
 def _run_prompt(prompt_text, prompt_type, doc_name, llm_fn=None):
     # Runs one prompt through the LLM, logs the call, and parses the output.
     # llm_fn lets a test inject a fake LLM; production calls go through _call_gemma().
@@ -196,23 +329,41 @@ def _run_prompt(prompt_text, prompt_type, doc_name, llm_fn=None):
     return _parse_llm_output(raw)
 
 
-def gemma_3_1b(doc1_str, doc2_str, doc1_name="docker-cis-v0.pdf", doc2_name="docker-cis-v1.pdf", yaml_dir=".", llm_fn=None):
+def gemma_3_1b(doc1_str, doc2_str, doc3_str=None,
+               doc1_name="docker-cis-v0.pdf",
+               doc2_name="docker-cis-v1.pdf",
+               doc3_name="docker-cis-v2.pdf",
+               yaml_dir=".", llm_fn=None):
 
-    # Runs each of the three constructed prompts against each document, then merges
+    # Splits each document into chunks, runs each of the three constructed prompts on every chunk, then merges
     # the results into one nested KDE dictionary per document and saves it as YAML.
-    # The YAML file names are built from the input document names:
+    # There are three input documents (v0, v1, v2); doc3_str can be set to None to
+    # run with only two. The YAML file names are built from the input document names:
     #   'docker-cis-v0.pdf' -> 'docker-cis-v0-kdes.yaml'
+    docs = [(doc1_name, doc1_str), (doc2_name, doc2_str)]
+    if doc3_str is not None:
+        docs.append((doc3_name, doc3_str))
+
     results = {}
 
-    for doc_name, doc_text in ((doc1_name, doc1_str), (doc2_name, doc2_str)):
-        parsed_outputs = [
-            _run_prompt(zero_shot(doc_text),        "zero-shot",        doc_name, llm_fn),
-            _run_prompt(few_shot(doc_text),         "few-shot",         doc_name, llm_fn),
-            _run_prompt(chain_of_thought(doc_text), "chain-of-thought", doc_name, llm_fn),
-        ]
+    prompt_fns = [
+        (zero_shot,        "zero-shot"),
+        (few_shot,         "few-shot"),
+        (chain_of_thought, "chain-of-thought"),
+    ]
 
-        # Drop any output that couldn't be parsed, then merge what's left.
-        parsed_outputs = [elements for elements in parsed_outputs if elements is not None]
+    for doc_name, doc_text in docs:
+        # Each chunk goes through all three prompt types; outputs that can't be parsed are dropped.
+        parsed_outputs = []
+        chunks = _chunk_text(doc_text)
+        for n, chunk in enumerate(chunks, start=1):
+            print(f"{doc_name}: chunk {n}/{len(chunks)}", flush=True)
+            for prompt_fn, prompt_type in prompt_fns:
+                parsed = _run_prompt(prompt_fn(chunk), prompt_type, doc_name, llm_fn)
+                if parsed is not None:
+                    parsed_outputs.append(parsed)
+
+        # Merge everything that was parsed (across chunks and prompt types).
         nested = _merge_elements([_extract_elements(d) for d in parsed_outputs])
 
         stem = os.path.splitext(os.path.basename(str(doc_name)))[0]
@@ -238,10 +389,10 @@ def gemma_3_1b(doc1_str, doc2_str, doc1_name="docker-cis-v0.pdf", doc2_name="doc
     *Prompt Type (zero-shot, few-shot, chain-of-thought)*
     ...
     *LLM Output*
-
 """
 
 def output_txt_collector(txt_path="llm-outputs.txt", log=LLM_LOG):
+
     if not log:
         raise ValueError("No LLM calls have been recorded yet. Run gemma_3_1b() first.")
 

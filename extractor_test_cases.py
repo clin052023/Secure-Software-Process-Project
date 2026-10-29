@@ -18,7 +18,7 @@ import os
 import tempfile
 import unittest
 
-from extractor import document_reader, gemma_3_1b, output_txt_collector
+from extractor import document_reader, gemma_3_1b, output_txt_collector, _chunk_text
 from prompt_constructors import zero_shot, few_shot, chain_of_thought
 
 # run in terminal: pip install fpdf2
@@ -39,7 +39,7 @@ def make_sample_pdf(dir_path, name, lines):
 
 def mock_llm(prompt):
     # A fake Gemma-3-1B that returns a plausible YAML answer, so the tests can run
-    # without Ollama installed. Different output for the chain-of-thought prompt,
+    # without Gemma installed. Different output for the chain-of-thought prompt,
     # because that prompt asks for reasoning followed by a "--- YAML ---" divider.
     if "--- YAML ---" in prompt:
         return (
@@ -79,6 +79,10 @@ class TestExtractorFunctions(unittest.TestCase):
             "Section 5 Data Encryption: Sensitive data at rest must use AES-256 encryption.",
             "Section 5.1 Data in transit must be encrypted using TLS 1.3.",
         ])
+        self.doc2 = make_sample_pdf(self.tmp.name, "docker-cis-v2.pdf", [
+            "Section 7 Logging: All containers must stream logs to a central server.",
+            "Section 7.1 Logs must be retained for at least 365 days.",
+        ])
 
     # ----------------------------- #
     #  1. Test: document_reader     #
@@ -108,6 +112,19 @@ class TestExtractorFunctions(unittest.TestCase):
             f.write(b"this is not really a pdf at all")
         with self.assertRaises(ValueError):
             document_reader(bad_hdr)
+
+    def test_chunk_text(self):
+        # Short text stays in one chunk.
+        self.assertEqual(_chunk_text("a\nb\nc", max_chars=100), ["a\nb\nc"])
+        # Long text is split, no chunk exceeds the limit, and no content is lost.
+        text = "\n".join(f"line {i}" for i in range(500))
+        chunks = _chunk_text(text, max_chars=200)
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(c) <= 200 for c in chunks))
+        self.assertEqual("\n".join(chunks), text)
+        # One enormous line is hard-split.
+        big = _chunk_text("x" * 450, max_chars=200)
+        self.assertEqual([len(c) for c in big], [200, 200, 50])
 
     # ----------------------------- #
     #  2. Test: zero_shot           #
@@ -153,19 +170,21 @@ class TestExtractorFunctions(unittest.TestCase):
     # ----------------------------- #
 
     def test_gemma_3_1b(self):
-        text0 = document_reader(self.doc0)
-        text1 = document_reader(self.doc1)
 
         results = gemma_3_1b(
-            text0, text1,
+            document_reader(self.doc0),
+            document_reader(self.doc1),
+            document_reader(self.doc2),
             doc1_name=os.path.basename(self.doc0),
             doc2_name=os.path.basename(self.doc1),
+            doc3_name=os.path.basename(self.doc2),
             yaml_dir=self.tmp.name,
             llm_fn=mock_llm,
         )
 
         # One nested dictionary per document, keyed by the document file name.
-        self.assertEqual(set(results.keys()), {"docker-cis-v0.pdf", "docker-cis-v1.pdf"})
+        self.assertEqual(set(results.keys()),
+                         {"docker-cis-v0.pdf", "docker-cis-v1.pdf", "docker-cis-v2.pdf"})
         v0 = results["docker-cis-v0.pdf"]
         self.assertIn("element1", v0)
         self.assertIn("name", v0["element1"])
@@ -175,11 +194,25 @@ class TestExtractorFunctions(unittest.TestCase):
         # One KDE can map to multiple requirements.
         self.assertGreaterEqual(len(v0["element1"]["requirements"]), 1)
 
-        # Two separate YAML files, named after the two input documents.
+        # Three separate YAML files, named after the three input documents.
         yaml0 = os.path.join(self.tmp.name, "docker-cis-v0-kdes.yaml")
         yaml1 = os.path.join(self.tmp.name, "docker-cis-v1-kdes.yaml")
+        yaml2 = os.path.join(self.tmp.name, "docker-cis-v2-kdes.yaml")
         self.assertTrue(os.path.isfile(yaml0))
         self.assertTrue(os.path.isfile(yaml1))
+        self.assertTrue(os.path.isfile(yaml2))
+
+        # Two documents (doc3_str=None) must still work.
+        results_two = gemma_3_1b(
+            document_reader(self.doc0),
+            document_reader(self.doc1),
+            None,
+            doc1_name=os.path.basename(self.doc0),
+            doc2_name=os.path.basename(self.doc1),
+            yaml_dir=self.tmp.name,
+            llm_fn=mock_llm,
+        )
+        self.assertEqual(set(results_two.keys()), {"docker-cis-v0.pdf", "docker-cis-v1.pdf"})
 
     # ----------------------------- #
     #  6. Test: output_txt_collector#
@@ -192,6 +225,7 @@ class TestExtractorFunctions(unittest.TestCase):
 
         text0 = document_reader(self.doc0)
         text1 = document_reader(self.doc1)
+        text2 = document_reader(self.doc2)
 
         # Reset the shared log so this test only counts its own LLM calls.
         # (In the real run the log keeps every call made during the session.)
@@ -199,9 +233,10 @@ class TestExtractorFunctions(unittest.TestCase):
         extractor.LLM_LOG.clear()
 
         gemma_3_1b(
-            text0, text1,
+            text0, text1, text2,
             doc1_name=os.path.basename(self.doc0),
             doc2_name=os.path.basename(self.doc1),
+            doc3_name=os.path.basename(self.doc2),
             yaml_dir=self.tmp.name,
             llm_fn=mock_llm,
         )
@@ -217,24 +252,26 @@ class TestExtractorFunctions(unittest.TestCase):
         self.assertLess(content.index("*LLM Name*"), content.index("*Prompt Used*"))
         self.assertLess(content.index("*Prompt Used*"), content.index("*Prompt Type"))
         self.assertLess(content.index("*Prompt Type"), content.index("*LLM Output*"))
-        # Two documents x three prompt types = six logged LLM calls.
-        self.assertEqual(content.count("*LLM Name*"), 6)
-        self.assertEqual(content.count("*Prompt Type"), 6)
+        # Three documents x three prompt types = nine logged LLM calls.
+        self.assertEqual(content.count("*LLM Name*"), 9)
+        self.assertEqual(content.count("*Prompt Type"), 9)
 
 
 if __name__ == "__main__":
     unittest.main()
 
-    # ------------------------------------------------------------------ #
-    #  Real run (needs Ollama + gemma3:1b, and two of the three PDFs on disk):    #
-    # ------------------------------------------------------------------ #
+    # ---------------------------------------------------------------- #
+    #  Real run (needs Gemma-3-1B via Hugging Face, and the PDFs disk): #
+    # ---------------------------------------------------------------- #
     # import extractor
     # text0 = document_reader("docker-cis-v0.pdf")
     # text1 = document_reader("docker-cis-v1.pdf")
+    # text2 = document_reader("docker-cis-v2.pdf")
     # results = extractor.gemma_3_1b(
-    #     text0, text1,
+    #     text0, text1, text2,
     #     doc1_name="docker-cis-v0.pdf",
     #     doc2_name="docker-cis-v1.pdf",
+    #     doc3_name="docker-cis-v2.pdf",
     # )
     # extractor.output_txt_collector("llm-outputs.txt")
     # print(results)

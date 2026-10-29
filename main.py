@@ -6,10 +6,13 @@ Usage:
     python3 main.py docker-cis-v0.pdf docker-cis-v1.pdf
 
 Prerequisites (one time):
-    1) install Ollama:        https://ollama.com/download
-    2) pull the model:        ollama pull gemma3:1b
-    3) keep Ollama running    (the app, or `ollama serve`)
-    4) pip install pypdf pyyaml requests
+    1) pip install pypdf pyyaml torch transformers accelerate
+    2) accept the Gemma license (gated model):
+       https://huggingface.co/google/gemma-3-1b-it
+    3) use your Hugging Face read token, either with `huggingface-cli login`
+       or by setting the HF_TOKEN environment variable (or pasting it into
+       HF_TOKEN in extractor.py)
+    4) the model (~2 GB) downloads on the first run, then is cached locally
 
 Outputs (in the current folder):
     docker-cis-v0-kdes.yaml   - KDEs for the first document
