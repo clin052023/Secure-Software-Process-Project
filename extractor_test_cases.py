@@ -18,7 +18,9 @@ import os
 import tempfile
 import unittest
 
-from extractor import document_reader, gemma_3_1b, output_txt_collector, _chunk_text
+from extractor import (document_reader, gemma_3_1b, output_txt_collector, _chunk_text,
+                       condense_cis_text, _extract_elements, _merge_elements,
+                       _truncate)
 from prompt_constructors import zero_shot, few_shot, chain_of_thought
 
 # run in terminal: pip install fpdf2
@@ -125,6 +127,84 @@ class TestExtractorFunctions(unittest.TestCase):
         # One enormous line is hard-split.
         big = _chunk_text("x" * 450, max_chars=200)
         self.assertEqual([len(c) for c in big], [200, 200, 50])
+
+    def test_condense_cis_text(self):
+        raw = (
+            "Table of Contents\n1.1.1 Ensure a thing is set (Manual) ........ 15\n"
+            "Page 15 \nInternal Only - General \n"
+            "1.1.1 Ensure a separate partition for containers has been created \n(Manual) \n"
+            "Profile Applicability: \n\u2022  Level 1 - Docker - Linux \n"
+            "Description: \nDocker stores data under /var/lib/docker. \n"
+            "Rationale: \nIt could fill up. \n"
+            "Audit: \nRun mountpoint. \n"
+            "Remediation: \nYou should create a separate partition for /var/lib/docker. \n"
+            "Default Value: \nNone. \n"
+            "Page 16 \nInternal Only - General \n"
+            "1.1.2 Ensure only trusted users control the daemon (Manual) \nProfile Applicability: \n"
+            "Description: \nOnly trusted users. \nRemediation: \nRemove untrusted users from the docker group. \n"
+            "Appendix: Summary Table 1.1.1 Ensure a separate partition 77 78 97 98"
+        )
+        out = condense_cis_text(raw)
+        self.assertIn("1.1.1 Ensure a separate partition for containers has been created", out)
+        self.assertIn("Remediation: You should create a separate partition", out)
+        self.assertIn("1.1.2 Ensure only trusted users control the daemon", out)
+        # Table of contents, rationale, audit, page headers and appendix numbers are gone.
+        for dropped in ("Table of Contents", "Rationale", "It could fill up", "Run mountpoint",
+                        "Internal Only", "Page 15", "77 78"):
+            self.assertNotIn(dropped, out)
+        # Text with no recommendations (like the small sample PDFs) is returned unchanged.
+        self.assertEqual(condense_cis_text("Just some plain text."), "Just some plain text.")
+
+    def test_extract_filters_junk_and_merge_dedupes(self):
+        data = {
+            "element1": {"name": "Element name", "requirements": ["req1", "req2"]},
+            "element2": {"name": "Docker Swarm", "requirements": [
+                "req1", "77", "Yes", "Configure the swarm manager to run in auto-lock mode.",
+                "<one complete requirement sentence>",
+                "Disable root login over SSH by setting PermitRootLogin to no"]},
+            "element3": {"name": "Page Numbers", "requirements": ["1", "2", "3"]},
+        }
+        elements = _extract_elements(data)
+        # Placeholder element, number-only element, placeholder/number/few-word/example requirements all dropped.
+        self.assertEqual(elements, [{"name": "Docker Swarm", "requirements": [
+            "Configure the swarm manager to run in auto-lock mode."]}])
+
+        # Near-duplicate names and repeated requirements are merged into one KDE.
+        merged = _merge_elements([
+            [{"name": "Docker Daemon", "requirements": ["Use a non-root user."]}],
+            [{"name": "daemon", "requirements": ["Use a non-root user", "Enable live restore."]}],
+        ])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged["element1"]["requirements"], ["Use a non-root user.", "Enable live restore."])
+
+    def test_example_copies_dicts_and_duplicates(self):
+        data = {
+            "element1": {"name": "SSH Daemon Configuration", "requirements": [
+                "Configure an SSH idle timeout is configured",
+                "Set server_tokens to off in the web server configuration"]},
+            "element2": {"name": "Logging", "requirements": [
+                "Set Docker daemon log level to info.",
+                {"Run the Docker daemon as below": 'dockerd --log-level="info"'}]},
+        }
+        elements = _extract_elements(data)
+        # Reworded copies of the few-shot examples are dropped, along with the element they leave empty.
+        self.assertEqual([e["name"] for e in elements], ["Logging"])
+        # A requirement that YAML parsed as a one-key dict becomes one plain string.
+        self.assertEqual(elements[0]["requirements"][1],
+                         'Run the Docker daemon as below: dockerd --log-level="info"')
+
+        # The same requirement under two KDE names is kept only under the first.
+        merged = _merge_elements([[
+            {"name": "Host Device Exposure", "requirements": ["You should not expose host devices to containers."]},
+            {"name": "Device Permissions", "requirements": ["You should not expose host devices to containers."]},
+        ]])
+        self.assertEqual(len(merged), 1)
+        self.assertEqual(merged["element1"]["name"], "Host Device Exposure")
+
+        # Truncation happens at a sentence end, never mid-word.
+        text = "First sentence is here. Second sentence is longer than the limit allows for sure."
+        self.assertEqual(_truncate(text, 40), "First sentence is here.")
+        self.assertFalse(_truncate("word " * 30, 42).endswith("wo"))
 
     # ----------------------------- #
     #  2. Test: zero_shot           #

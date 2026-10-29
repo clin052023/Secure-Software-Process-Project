@@ -1,416 +1,585 @@
 element1:
-  name: Version Control
+  name: Containerization
   requirements:
-  - req1
-  - req2
-  - req3
+  - Ensure a separate partition for containers has been created
+  - Ensure only trusted users are allowed to control Docker daemon
+  - Ensure auditing is configured for the Docker daemon
+  - Ensure auditing is configured for Docker files and directories - /etc/docker
+  - Ensure auditing is configured for Docker files and directories - docker.service
+  - Ensure auditing is configured for Docker files and directories - containerd.sock
+  - Ensure auditing is configured for Docker files and directories - docker.sock
 element2:
-  name: Container Runtime
+  name: Docker Daemon Access
   requirements:
-  - req1
-  - req2
-  - req3
+  - You should remove any untrusted users from the docker group.
+  - Additionally, you should not create a mapping of sensitive directories from the
+    host to container volumes.
 element3:
-  name: Audit Logging
+  name: Docker Audit Configuration
   requirements:
-  - req1
-  - req2
-  - req3
+  - Add a rule for the /etc/default/docker file.
+  - Add a rule for the /etc/docker/daemon.json file.
+  - Add a rule for the /etc/containerd/config.toml file.
+  - Add a rule for the /etc/sysconfig/docker file.
+  - Add a rule for the /usr/bin/containerd if applicable.
+  - Add a rule for the /usr/bin/containerd-shim if applicable.
+  - Add a rule for the /usr/bin/containerd-shim-runc-v1 if applicable.
+  - Add a rule for the /usr/bin/runc if applicable.
 element4:
-  name: Docker Daemon
+  name: Docker File Auditing
   requirements:
-  - req1
-  - req2
-  - req3
+  - Add a rule for the /usr/bin/containerd file.
+  - Add a rule for the /usr/bin/runc file.
 element5:
-  name: Docker Configuration
+  name: Container Host Hardening
   requirements:
-  - req1
-  - req2
-  - req3
+  - You may consider various CIS Security Benchmarks for your container host.
+  - If you have other security guidelines or regulatory requirements to adhere to,
+    please follow them as suitable in your environment.
+  - Follow the current Docker documentation on how to install the Docker daemon as
+    a non-root user.
 element6:
-  name: Dockerd
+  name: Docker Version Management
   requirements:
-  - req1
-  - req2
-  - req3
+  - You should monitor versions of Docker releases and make sure your software is
+    updated as required.
 element7:
-  name: Docker
+  name: Network Traffic Restriction
   requirements:
-  - req1
-  - req2
-  - req3
+  - By default, all network traffic is allowed between containers on the same host
+    on the default network bridge.
+  - If not desired, restrict all inter-container communication.
+  - Edit the Docker daemon configuration file to ensure thaticc is disabled.
+  - 'Alternatively, run the Docker daemon as below: dockerd --iptables=false'
+  - Do not run the Docker daemon with --iptables=false
 element8:
-  name: Docker service
+  name: Docker Daemon Configuration
   requirements:
-  - req1
-  - req2
-  - req3
+  - 'Ensure that icc is disabled. It should include the following setting ''icc'':
+    false'
+  - 'Alternatively, run the Docker daemon as below: dockerd --icc=false'
 element9:
-  name: Docker socket
+  name: Logging Level
   requirements:
-  - req1
-  - req2
-  - req3
+  - Set Docker daemon log level to info.
 element10:
-  name: Docker config files
+  name: AOS Storage Driver
   requirements:
-  - req1
-  - req2
-  - req3
+  - Do not use aufs as the storage driver for your Docker instance.
 element11:
-  name: Docker daemon configuration
-  requirements:
-  - req1
-  - req2
-  - req3
-  - Ensure the Docker daemon is used in a non-root user.
-  - Set the minimum number of manager nodes to be created.
-  - Configure the swarm manager to run in auto-lock mode.
-element12:
-  name: Docker daemon startup options
-  requirements:
-  - req1
-  - req2
-  - req3
-element13:
-  name: Docker daemon options
-  requirements:
-  - req1
-  - req2
-  - req3
-element14:
-  name: Element name
-  requirements:
-  - req1
-  - req2
-  - req3
-element15:
-  name: Data Protection
-  requirements:
-  - req1
-  - req2
-  - req3
-element16:
-  name: Security Configuration
-  requirements:
-  - req1
-  - req2
-  - req3
-element17:
-  name: Container Runtime Configuration
-  requirements:
-  - req1
-  - req2
-  - req3
-element18:
-  name: Docker Swarm
-  requirements:
-  - req1
-  - req2
-  - req3
-element19:
-  name: Docker Network
-  requirements:
-  - req1
-  - req2
-  - req3
-element20:
-  name: Docker Container
-  requirements:
-  - req1
-  - req2
-  - req3
-element21:
-  name: Docker Image
-  requirements:
-  - req1
-  - req2
-  - req3
-element22:
-  name: Docker Volume
-  requirements:
-  - req1
-  - req2
-  - req3
-element23:
-  name: Docker Swarm Overlay Network
-  requirements:
-  - req1
-  - req2
-  - req3
-  - '77'
-  - '78'
-  - '97'
-  - '98'
-element24:
-  name: Docker Swarm Overlay Network Encryption
-  requirements:
-  - req1
-  - req2
-  - req3
-  - '79'
-  - '80'
-  - '99'
-  - '100'
-element25:
-  name: Docker Secret Management
-  requirements:
-  - req1
-  - req2
-  - req3
-element26:
-  name: Profile Applicability
-  requirements:
-  - Use Docker's in-built secret management commands for control of secrets.
-  - Review whether to run Docker swarm manager in auto-lock mode.
-  - Ensure that the Docker daemon is used in a non-root user.
-element27:
-  name: Container Image Configuration
-  requirements:
-  - Use trusted base images.
-  - Scan and rebuild images to include security patches.
-  - Restrict the use of privileged containers.
-element28:
-  name: Docker Swarm Configuration
-  requirements:
-  - Use a separate partition for containers.
-  - Ensure that the Docker daemon is used in a non-root user.
-  - Configure the swarm manager to run in auto-lock mode.
-element29:
-  name: Network Security
-  requirements:
-  - Restrict network traffic between containers.
-  - Use a non-root user for running the Docker daemon.
-  - Use a non-root user for running the Docker swarm manager.
-element30:
-  name: Security Operations
-  requirements:
-  - Ensure that image sprawl is avoided.
-  - Scan and rebuild images to include security patches.
-  - Ensure that the Docker daemon is used in a non-root user.
-element31:
-  name: CIS Controls
-  requirements:
-  - Correctly
-  - 'Yes'
-  - Version Control IG 1 IG 2 IG 3
-element32:
-  name: Secure Registries
-  requirements:
-  - '1'
-  - '2'
-  - '3'
-element33:
   name: TLS Authentication
   requirements:
-  - '4'
-  - '5'
-  - '6'
+  - Follow the steps mentioned in the Docker documentation or other references.
+element12:
+  name: Default ulimit
+  requirements:
+  - Set the default ulimit options as appropriate in your environment.
+  - Run Docker in daemon mode and pass --default-ulimit as argument with respective
+    ulimits as appropriate in your environment and in line with your security policy.
+  - Dockerd --default-ulimit nproc=1024:2048 --default-ulimit nofile=100:200
+element13:
+  name: User namespace support
+  requirements:
+  - You should enable user namespace support in Docker daemon to utilize container
+    user to host user re-mapping.
+  - If the container images that you are using have a pre-defined non-root user, this
+    recommendation may be skipped as this feature is still in its infancy, and might
+    result in unpredictable issues or difficulty in configuration.
+element14:
+  name: Default cgroup usage
+  requirements:
+  - The --cgroup-parent option allows you to set the default cgroup parent to use
+    for all containers.
+  - The default setting is in line with good security practice and can be left in
+    situ. If you wish to specifically set a non-default cgroup, pass the --cgroup-parent
+    parameter to the Docker daemon when starting it.
+element15:
+  name: Base device size
+  requirements:
+  - Under certain circumstances, you might need containers larger than 10G. Where
+    this applies you should carefully choose the base device size.
+  - Do not set --storage-opt dm.basesize until needed.
+element16:
+  name: Authorization for Docker client commands
+  requirements:
+  - You should use native Docker authorization plugins or a third party authorization
+    mechanism with the Docker daemon to manage access to Docker client commands.
+element17:
+  name: Centralized and remote logging
+  requirements:
+  - Docker supports various logging mechanisms. A preferable method for storing logs
+    is one that supports centralized and remote management.
+  - 'Step 1: Set up the desired log driver following its documentation. Step 2: Start
+    the docker daemon using that logging driver.'
+  - 'For example: dockerd --log-driver=syslog --log-opt syslog-address=tcp://192.xxx.xxx.xxx'
+element18:
+  name: Containers restricted from acquiring new privileges
+  requirements:
+  - By default you should restrict containers from acquiring additional privileges
+    via suid or sgid.
+  - 'Run the Docker daemon as below: dockerd --no-new-privileges'
+element19:
+  name: Live restore
+  requirements:
+  - The --live-restore option enables full support of daemon-less containers within
+    Docker. It ensures that Docker does not stop containers on shutdown or restore
+    and that it properly reconnects to the container when restarted.
+  - Run Docker in daemon mode and pass --live-restore to it as an argument.
+element20:
+  name: No new privileges
+  requirements:
+  - 'You should run the Docker daemon as below: dockerd --no-new-privileges'
+element21:
+  name: Docker Daemon
+  requirements:
+  - Ensure the default ulimit is configured appropriately
+  - Ensure the default cgroup usage has been confirmed
+  - Ensure base device size is not changed until needed
+  - Ensure that authorization for Docker client commands is enabled
+  - Ensure centralized and remote logging is configured
+  - Ensure containers are restricted from acquiring new privileges
+  - Ensure live restore is enabled
+element22:
+  name: Docker Configuration
+  requirements:
+  - Enable user namespace support
+element23:
+  name: Docker Socket Configuration
+  requirements:
+  - Verify that the docker.socket file ownership is set to root:root
+element24:
+  name: /etc/docker
+  requirements:
+  - You should verify that the /etc/docker directory permissions are correctly set
+    to 755 or more restrictively
+  - 'You should run the following command: chmod 755 /etc/docker This sets the permissions
+    for the directory to 755.'
+  - Set permissions to 755 or more restrictively
+  - Run chmod 755 /etc/docker
+element25:
+  name: registry certificate file permissions
+  requirements:
+  - Note that, by default, this directory might not exist if no registry certificate
+    files are in place.
+  - 'You should execute the following command: find /etc/docker/certs.d/ -type f -exec
+    chmod 0444 {} \; This would set the permissions for the registry certificate files
+    to 444.'
+element26:
+  name: TLS CA certificate file ownership
+  requirements:
+  - You should verify that the TLS CA certificate file (the file that is passed along
+    with the - -tlscacert parameter) is individually owned and group owned by root.
+element27:
+  name: TLS CA certificate file permissions
+  requirements:
+  - You should verify that the TLS CA certificate file (the file that is passed along
+    with the - -tlscert parameter) has permissions of 444 or is set more restrictively.
+element28:
+  name: Docker server certificate file ownership
+  requirements:
+  - You should verify that the Docker server certificate file (the file that is passed
+    along with the --tlscert parameter) is individually owned and group owned by root.
+element29:
+  name: Registry Certificate Files
+  requirements:
+  - Set ownership to root:root
+  - Set permissions to 444 or more restrictively
+element30:
+  name: Docker server certificate key file
+  requirements:
+  - You should verify that the Docker server certificate key file (the file that is
+    passed along with the --tlskey parameter) has permissions of 400.
+element31:
+  name: Docker socket file
+  requirements:
+  - You should verify that the Docker socket file is owned by root and group owned
+    by docker.
+  - 'You should execute the following command: chown root:docker /var/run/docker.sock
+    This sets the ownership to root and group ownership to docker for the default
+    Docker socket file.'
+element32:
+  name: Docker socket file permissions
+  requirements:
+  - You should verify that the Docker socket file has permissions of 660 or are configured
+    more restrictively.
+  - You should execute the command below. chmod 660 /var/run/docker.sock This sets
+    the file permissions of the Docker socket file to 660.
+element33:
+  name: daemon.json file
+  requirements:
+  - You should verify that the daemon.json file individual ownership and group ownership
+    is correctly set to root.
+  - 'You should execute the following command: chown root:root /etc/docker/daemon.json
+    This sets the ownership and group ownership for the file to root.'
 element34:
-  name: Ulimit Configuration
+  name: daemon.json file permissions
   requirements:
-  - '7'
-  - '8'
-  - '9'
+  - You should verify that if the daemon.json file is present, its file permissions
+    are correctly set to 644 or more restrictively.
+  - 'You should execute the following command: chmod 644 /etc/docker/daemon.json This
+    sets the file permissions for this file to 644.'
 element35:
-  name: Default ulimit Configuration
+  name: /etc/default/docker file
   requirements:
-  - '10'
-  - '11'
-  - '12'
+  - You should verify that the /etc/default/docker file ownership is set to root:root.
+  - 'You should execute the following command: chown root:root /etc/default/docker
+    This sets the ownership and group ownership of the file to root.'
 element36:
-  name: Base Device Size
+  name: /etc/default/docker file permissions
   requirements:
-  - '13'
-  - '14'
-  - '15'
+  - You should verify that the /etc/default/docker file permissions are correctly
+    set to 644 or more restrictively.
+  - 'You should execute the following command: chmod 644 /etc/default/docker This
+    sets the file permissions for this file to 644.'
 element37:
-  name: Centralized Logging
+  name: /etc/sysconfig/docker file
   requirements:
-  - '16'
-  - '17'
-  - '18'
+  - You should verify that the /etc/sysconfig/docker file permissions are correctly
+    set to 644 or more restrictively.
+  - 'You should execute the following command: chmod 644 /etc/sysconfig/docker This
+    sets the file permissions for this file to 644.'
 element38:
-  name: Containers Restricted
+  name: /etc/sysconfig/docker file ownership
   requirements:
-  - '19'
-  - '20'
-  - '21'
+  - You should verify that the /etc/sysconfig/docker file individual ownership and
+    group ownership is correctly set to root.
+  - 'You should execute the following command: chown root:root /etc/sysconfig/docker
+    This sets the ownership and group ownership for the file to root.'
 element39:
-  name: Live Restore Enabled
+  name: Docker Socket File Ownership
   requirements:
-  - '22'
-  - '23'
-  - '24'
+  - 'You should execute the following command: chown root:docker /var/run/docker.sock
+    This sets the ownership to root and group ownership to docker for'
 element40:
-  name: Userland Proxy Disabled
+  name: Containerd socket file permissions
   requirements:
-  - '25'
-  - '26'
+  - You should verify that the Containerd socket file has permissions of 660 or are
+    configured more restrictively.
+  - You should execute the command below. chmod 660 /run/containerd/containerd.sock
+    This sets the file permissions of the Containerd socket file to 660.
+  - Execute chmod 660 /run/containerd/containerd.sock this sets the file permissions
+    of the Containerd socket file to 660
+  - Ensure that the container has been created, and the user is configured
 element41:
-  name: Experimental Features
+  name: User creation
   requirements:
-  - '27'
-  - '28'
+  - If there is no specific user created in the container base image, then make use
+    of the useradd command to add a specific user before the USER instruction in the
+    Dockerfile.
 element42:
-  name: Docker Server Certificate
+  name: Trusted base images
   requirements:
-  - '29'
-  - '30'
+  - The following procedures are useful for establishing trust for a specific image.
+    • Configure and use Docker Content trust. • View the history of each Docker image
+    to evaluate its risk, dependent on the sensitivity of the application you wish
+    to deploy using it. • Scan Docker images for vulnerabilities at regular intervals.
 element43:
-  name: Docker Server Certificate Permissions
+  name: Unnecessary packages
   requirements:
-  - '31'
-  - '32'
+  - Containers should have as small a footprint as possible, and should not contain
+    unnecessary software packages which could increase their attack surface.
+  - You should not install anything within the container that is not required. You
+    should consider using a minimal base image rather than the standard Centos, Debian,
+    or Red Hat images if you can. Some of the options available include BusyBox and
+    Alpine. Not only can this trim your image size considerably, but there would also
+    be fewer pieces of software which could contain vectors for attack.
 element44:
-  name: Docker Socket Permissions
+  name: Content trust
   requirements:
-  - '33'
-  - '34'
-  - '35'
-  - '36'
+  - Content trust is disabled by default and should be enabled in line with organizational
+    security policy.
+  - 'To enable content trust in a bash shell, you should enter the following command:
+    export DOCKER_CONTENT_TRUST=1 Alternatively, you could set this environment variable
+    in your profile file so that content trust in enabled on every login.'
 element45:
-  name: Docker Directory Permissions
+  name: HEALTHCHECK
   requirements:
-  - '37'
-  - '38'
+  - You should add the HEALTHCHECK instruction to your Docker container images in
+    order to ensure that health checks are executed against running containers.
+  - You should follow the Docker documentation and rebuild your container images to
+    include the HEALTHCHECK instruction.
 element46:
-  name: Daemon.json Permissions
+  name: Docker Base Image Trust
   requirements:
-  - '39'
-  - '40'
+  - Configure and use Docker Content trust
+  - Scan Docker images for vulnerabilities
+  - Rebuild images with security patches
+  - Enable Content trust in Docker
 element47:
-  name: System Configuration
+  name: Update Instructions
   requirements:
-  - '41'
-  - '42'
+  - You should not use OS package manager update instructions such as apt-get update
+    or yum update either alone or in a single line in any Dockerfiles used to generate
+    images under review.
+  - You should use update instructions together with install instructions and version
+    pinning for packages while installing them. This will prevent caching and force
+    the extraction of the required versions.
 element48:
+  name: Secrets Management
+  requirements:
+  - Do not store any secrets in Dockerfiles. Where secrets are required during the
+    build process, make use of a secrets management tool, such as the buildkit builder
+    included with Docker.
+  - You should use Docker's in-built secret management command for managing secrets
+    in a swarm cluster.
+  - You should follow the docker secret documentation and use it to manage secrets
+    effectively.
+element49:
+  name: Package Verification
+  requirements:
+  - Validate artifacts signatures before uploading to the package registry.
+element50:
   name: Swarm Mode
   requirements:
-  - '43'
-  - '44'
-element49:
-  name: AppArmor Profile
-  requirements:
-  - '45'
-  - '46'
-element50:
-  name: SELinux Security Options
-  requirements:
-  - '47'
-  - '48'
+  - Do not enable swarm mode on a Docker engine instance unless this is needed.
 element51:
-  name: Container Bridge
+  name: AppArmor
   requirements:
-  - '49'
-  - '50'
+  - If AppArmor is applicable for your Linux OS, you should enable it.
 element52:
-  name: Docker Socket Mount
+  name: SELinux
   requirements:
-  - '51'
-  - '52'
+  - If SELinux is applicable for your Linux OS, you should use it.
 element53:
-  name: Host Namespace Sharing
+  name: Configuration File
   requirements:
-  - '53'
-  - '54'
+  - Ensure only modern TLS versions are enabled by setting ssl_protocols to TLSv1.2
+    TLSv1.3 in the web server configuration.
 element54:
-  name: Cgroup Usage
+  name: Network
   requirements:
-  - '55'
-  - '56'
+  - Ensure only verified packages are installed
 element55:
-  name: Container Restrictions
+  name: Build System
   requirements:
-  - '57'
-  - '58'
+  - Use the COPY instruction instead of ADD instruction in Dockerfiles.
 element56:
-  name: Additional Privileges
+  name: Buildkit
   requirements:
-  - '59'
-  - '60'
+  - Use the buildkit builder included with Docker to ensure the correct package versions
+    are used during the build process.
 element57:
-  name: Docker Bridge
+  name: Network Namespace
   requirements:
-  - '61'
-  - '62'
+  - Ensure that the host's network namespace is not shared
+  - You should not pass the --net=host option when starting any container.
+  - When the networking mode on a container is set to --net=host, the container is
+    not placed inside a separate network stack. Effectively, applying this option
+    instructs Docker to not containerize the container's networking.
 element58:
-  name: Overlay Networks
+  name: Memory Management
   requirements:
-  - '63'
-  - '64'
+  - You should run the container with only as much memory as it requires by using
+    the -- memory argument.
+  - 'For example, you could run a container using the command below: docker run -d
+    --memory 256m centos sleep 1000 In the example above, the container is started
+    with a memory limit of 256 MB.'
 element59:
-  name: Encryption
+  name: CPU Priority
   requirements:
-  - '65'
-  - '66'
+  - You should manage the CPU runtime between your containers dependent on their priority
+    within your organization.
+  - To do so start the container using the --cpu-shares argument.
+  - By default, all containers on a Docker host share resources equally. By using
+    the resource management capabilities of the Docker host you can control the host
+    CPU resources that a container may consume.
 element60:
-  name: Auto-Lock
+  name: Root Filesystem Mount
   requirements:
-  - '67'
-  - '68'
+  - The container's root filesystem should be treated as a 'golden image' by using
+    Docker run's --read-only option.
+  - You should add a --read-only flag at a container's runtime to enforce the container's
+    root filesystem being mounted as read only.
 element61:
-  name: Node Certificates
+  name: Container Traffic Binding
   requirements:
-  - '69'
-  - '70'
+  - By default, Docker containers can make connections to the outside world, but the
+    outside world cannot connect to containers and each outgoing connection will appear
+    to originate from one of the host machine's own IP addresses.
+  - You should bind the container port to a specific host interface on the desired
+    host port.
 element62:
-  name: Management Plane Traffic
+  name: Memory Usage
   requirements:
-  - '71'
-  - '72'
+  - By default, all containers on a Docker host share resources equally. By using
+    the resource management capabilities of the Docker host, you can control the amount
+    of memory that a container is able to use.
 element63:
-  name: Swarm Overlay Network
+  name: Container Root Filesystem
   requirements:
-  - '73'
-  - '74'
+  - The container's root filesystem should be treated as a 'golden image' by using
+    Docker run's --read-only option. This prevents any writes to the container's root
+    filesystem at container runtime and enforces the principle of immutable infrastructure.
 element64:
-  name: Swarm Manager Lock
+  name: Host Interface Binding
   requirements:
-  - '75'
-  - '76'
+  - By default, Docker containers can make connections to the outside world, but the
+    outside world cannot connect to containers and each outgoing connection will appear
+    to originate from one of the host machine's own IP addresses. You should only
+    allow container services to be contacted through a specific external interface
+    on the host machine.
 element65:
-  name: Docker Swarm Manager
+  name: on-failure
   requirements:
-  - '81'
-  - '82'
-  - '87'
-  - '88'
-  - '91'
-  - '92'
-  - '93'
-  - '94'
-  - '95'
-  - '96'
-  - '101'
-  - '102'
-  - '103'
-  - '104'
-  - '105'
-  - '106'
-  - '107'
-  - '108'
+  - By using the --restart flag in the docker run command you can specify a restart
+    policy for how a container should or should not be restarted on exit. You should
+    choose the on-failure restart policy and limit the restart attempts to 5.
+  - 'If you wish a container to be automatically restarted, a sample command is as
+    below: docker run --detach --restart=on-failure:5 nginx'
 element66:
-  name: Docker Swarm Manager Auto-Lock
+  name: Process Namespace
   requirements:
-  - '83'
-  - '84'
-  - '89'
-  - '90'
+  - The Process ID (PID) namespace isolates the process ID space, meaning that processes
+    in different PID namespaces can have the same PID. This creates process level
+    isolation between the containers and the host.
+  - 'You should not start a container with the --pid=host argument. For example, do
+    not start a container with the command below: docker run --interactive --tty --pid=host
+    centos /bin/bash'
 element67:
-  name: Docker Swarm Manager Auto-Lock Key Rotation
+  name: Host Device Exposure
   requirements:
-  - '85'
-  - '86'
+  - Host devices can be directly exposed to containers at runtime. Do not directly
+    expose host devices to containers, especially to containers that are not trusted.
+  - 'You should not directly expose host devices to containers. If you do need to
+    expose host devices to containers, you should use granular permissions as appropriate
+    to your organization: For example, do not start a container using the command
+    below: docker run --interactive --tty --device=/dev/tty0:/dev/tty0:rwm -- device=/dev/temp_sda:/dev/temp_sda:rwm
+    centos bash You should only share the host device using appropriate permissions:
+    docker run --interactive --tty --device=/dev/tty0:/dev/tty0:rw -- device=/dev/temp_sda:/dev/temp_sda:r
+    centos bash'
 element68:
-  name: Access Control
+  name: Ulimit Overwrite
   requirements:
-  - All administrative accounts must enforce Multi-Factor Authentication (MFA)
-  - Passwords must be at least 16 characters long
-  - Passwords must be changed every 90 days
+  - The default ulimit is set at the Docker daemon level. However, if you need to,
+    you may override the default ulimit setting during container runtime.
+  - 'You should only override the default ulimit settings if needed in a specific
+    case. For example, to override default ulimit settings start a container as below:
+    docker run -ti -d --ulimit nofile=1024:1024 centos sleep 1000'
 element69:
-  name: Data Encryption
+  name: Mount Propagation Mode
   requirements:
-  - Sensitive data at rest must use AES-256 encryption
-  - Data in transit must be encrypted using TLS 1.3
+  - Mount propagation mode allows mounting volumes in shared, slave or private mode
+    on a container.
+  - Do not use shared mount propagation mode unless explicitly needed.
+element70:
+  name: UTS Namespace
+  requirements:
+  - 'The UTS namespace provides isolation between two system identifiers: the hostname
+    and the NIS domain name. It is used to set the hostname and the domain which are
+    visible to running processes in that namespace. Processes running within containers
+    do not typically require to know either the hostname or the domain name. The UTS
+    namespace should therefore not be shared with the host.'
+  - 'You should not start a container with the --uts=host argument. For example, do
+    not start a container using the command below: docker run --rm --interactive --tty
+    --uts=host rhel7.2'
+element71:
+  name: Information Disclosure
+  requirements:
+  - You should not directly expose host devices to containers, especially to containers
+    that are not trusted.
+element72:
+  name: seccomp profile
+  requirements:
+  - By default, seccomp profiles are enabled.
+  - You do not need to do anything unless you want to modify and use a modified seccomp
+    profile.
+element73:
+  name: docker exec commands
+  requirements:
+  - You should not use the --privileged option in docker exec commands.
+  - You should not use the --user=root option in docker exec commands.
+element74:
+  name: cgroup usage
+  requirements:
+  - You should not use the --cgroup-parent option within the docker run command unless
+    strictly required.
+element75:
+  name: container health checks
+  requirements:
+  - If the container image does not have an HEALTHCHECK instruction defined, you should
+    use the --health-cmd parameter at container runtime to check container health.
+element76:
+  name: PIDs cgroup limit
+  requirements:
+  - You should use the --pids-limit flag at container runtime.
+element77:
+  name: Docker bridge
+  requirements:
+  - You should not use Docker's default bridge docker0. Instead you should use Docker's
+    user-defined networks for container networking.
+element78:
+  name: host user namespaces
+  requirements:
+  - You should not share the host's user namespaces with containers running on it.
+element79:
+  name: image versioning
+  requirements:
+  - You should always ensure that you are using the latest version of the images within
+    your repository and not cached older versions.
+element80:
+  name: Docker Socket
+  requirements:
+  - Ensure that the Docker socket docker.sock should not be mounted inside any containers.
+  - You should ensure that no containers mount docker.sock as a volume.
+element81:
+  name: Image Sprawl
+  requirements:
+  - Ensure that image sprawl is avoided.
+  - You should keep only the images that you actually need and establish a workflow
+    to remove old or stale images from the host.
+  - Additionally, you should use features such as pull-by-digest to get specific images
+    from the registry.
+element82:
+  name: Container Sprawl
+  requirements:
+  - 'You should periodically check your container inventory on each host and clean
+    up containers which are not in active use with the command below: docker container
+    prune'
+element83:
+  name: Manager Node Creation
+  requirements:
+  - Ensure that the minimum number of required manager nodes is created in a swarm.
+element84:
+  name: Swarm Service Binding
+  requirements:
+  - By default, Docker swarm services will listen on all interfaces on the host. This
+    may not be necessary for the operation of the swarm where the host has multiple
+    network interfaces.
+  - Resolving this issues requires re-initialization of the swarm, specifying a specific
+    interface for the --listen-addr parameter.
+element85:
+  name: Docker Overlay Network Encryption
+  requirements:
+  - Ensure that all Docker swarm overlay networks are encrypted.
+  - You should create overlay networks with the --opt encrypted flag.
+element86:
+  name: Swarm Manager Auto-Lock
+  requirements:
+  - Review whether you wish to run Docker swarm manager in auto-lock mode.
+  - 'If you are initializing a swarm, use the command below: docker swarm init --autolock'
+element87:
+  name: Swarm Manager Auto-Lock Key Rotation
+  requirements:
+  - You should rotate the swarm manager auto-lock key periodically.
+  - You should run the command below to rotate the keys. docker swarm unlock-key --rotate
+element88:
+  name: Node Certificate Rotation
+  requirements:
+  - You should rotate swarm node certificates in line with your organizational security
+    policy.
+  - You should run the command to set the desired expiry time on the node certificate.
+element89:
+  name: CA Certificate Rotation
+  requirements:
+  - You should rotate root CA certificates as appropriate.
+  - You should run the command to rotate a certificate.
+element90:
+  name: Configuration Area
+  requirements:
+  - Ensure that the minimum number of manager nodes have been created in a swarm.
+element91:
+  name: Swarm Initialization
+  requirements:
+  - Initialize the swarm with dedicated interfaces for management and data planes
+    respectively.
+  - Configure the swarm with dedicated interfaces for management and data planes respectively.

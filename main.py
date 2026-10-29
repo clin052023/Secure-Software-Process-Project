@@ -6,7 +6,7 @@ Usage:
     python3 main.py docker-cis-v0.pdf docker-cis-v1.pdf
 
 Prerequisites (one time):
-    1) pip install pypdf pyyaml torch transformers accelerate
+    1)  pip install pypdf pyyaml torch transformers accelerate
     2) accept the Gemma license (gated model):
        https://huggingface.co/google/gemma-3-1b-it
     3) use your Hugging Face read token, either with `huggingface-cli login`
