@@ -8,7 +8,7 @@ Task 1 - Extractor
 # ---------------------------------- #
 
 # One test case for each of the six functions.
-# Run in terminal:  python extractor_test_cases.py
+# Run in terminal:  python test_extractor.py
 #
 # The tests do NOT need the real Gemma-3-1B model: gemma_3_1b() accepts an llm_fn
 # argument, so the tests inject a fake LLM that returns canned YAML outputs.
