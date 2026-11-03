@@ -1,0 +1,36 @@
+Requirements only in file 1:
+Docker Auditing,Add a rule for the /etc/containerd/config.toml file.
+Docker Auditing,Add a rule for the /etc/default/docker file.
+Docker Auditing,Add a rule for the /etc/docker/daemon.json file.
+Docker Auditing,Add a rule for the /etc/sysconfig/docker file.
+Docker Auditing,Add a rule for the /usr/bin/containerd file.
+Docker Auditing,Add a rule for the /usr/bin/containerd-shim file.
+Docker Auditing,Add a rule for the /usr/bin/containerd-shim-runc-v1 file.
+Docker Auditing,Add a rule for the /usr/bin/runc file.
+Docker Shim Runc V1 Auditing,Add a rule for the /usr/bin/runc-v1 file.
+Docker Shim Runc V2 Auditing,Add a rule for the /usr/bin/runc-v2 file.
+TLS CA certificate file ownership,You should verify that the TLS CA certificate file (the file that is passed along with the -- tlscacert parameter) is individually owned and group owned by root.
+TLS CA certificate file permissions,You should verify that the TLS CA certificate file (the file that is passed along with the -- tlscert parameter) has permissions of 444 or is set more restrictively.
+
+Requirements only in file 2:
+Containerization,Ensure a separate partition for containers has been created
+Containerization,Ensure auditing is configured for Docker files and directories - /etc/docker
+Containerization,Ensure auditing is configured for Docker files and directories - containerd.sock
+Containerization,Ensure auditing is configured for Docker files and directories - docker.service
+Containerization,Ensure auditing is configured for Docker files and directories - docker.sock
+Containerization,Ensure auditing is configured for the Docker daemon
+Containerization,Ensure only trusted users are allowed to control Docker daemon
+Docker Audit Configuration,Add a rule for the /etc/containerd/config.toml file.
+Docker Audit Configuration,Add a rule for the /etc/default/docker file.
+Docker Audit Configuration,Add a rule for the /etc/docker/daemon.json file.
+Docker Audit Configuration,Add a rule for the /etc/sysconfig/docker file.
+Docker Audit Configuration,Add a rule for the /usr/bin/containerd if applicable.
+Docker Audit Configuration,Add a rule for the /usr/bin/containerd-shim if applicable.
+Docker Audit Configuration,Add a rule for the /usr/bin/containerd-shim-runc-v1 if applicable.
+Docker Audit Configuration,Add a rule for the /usr/bin/runc if applicable.
+Docker Daemon Access,Additionally, you should not create a mapping of sensitive directories from the host to container volumes.
+Docker Daemon Access,You should remove any untrusted users from the docker group.
+Docker File Auditing,Add a rule for the /usr/bin/containerd file.
+Docker File Auditing,Add a rule for the /usr/bin/runc file.
+TLS CA certificate file ownership,You should verify that the TLS CA certificate file (the file that is passed along with the - -tlscacert parameter) is individually owned and group owned by root.
+TLS CA certificate file permissions,You should verify that the TLS CA certificate file (the file that is passed along with the - -tlscert parameter) has permissions of 444 or is set more restrictively.

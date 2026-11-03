@@ -1,6 +1,6 @@
 '''
 Courtney Lin, Nicholas Marden
-Task 1 - Extractor - Runner
+Project Runner
 
 Usage:
     python3 main.py docker-cis-v0.pdf docker-cis-v1.pdf
@@ -22,9 +22,14 @@ Outputs (in the current folder):
 
 import sys
 from extractor import document_reader, gemma_3_1b, output_txt_collector
+from code_comparator import comparator
 
 
 def main():
+    # ---------------------------------------------------------------- #
+
+    # Extractor #
+
     if len(sys.argv) != 3:
         print("Usage: python3 main.py <document1.pdf> <document2.pdf>")
         print("Example: python3 main.py docker-cis-v0.pdf docker-cis-v1.pdf")
@@ -52,6 +57,22 @@ def main():
     print(f"Saved: {txt_path}")
     for doc_name, kdes in results.items():
         print(f"\n{doc_name}: {len(kdes)} KDE(s) found")
+
+    # ---------------------------------------------------------------- #
+
+    # Comparator #
+
+    d1_yaml_path = doc1_path.replace(".pdf", "-kdes.yaml")
+    d2_yaml_path = doc2_path.replace(".pdf", "-kdes.yaml")
+
+    doc1_yaml, doc2_yaml = comparator.load_files(d1_yaml_path, d2_yaml_path)
+
+    comparator.id_differences_in_names(doc1_yaml, doc2_yaml)
+    comparator.id_differences_in_requirements(doc1_yaml, doc2_yaml)
+
+    # ---------------------------------------------------------------- #
+    
+    # Executor #
 
 
 if __name__ == "__main__":
