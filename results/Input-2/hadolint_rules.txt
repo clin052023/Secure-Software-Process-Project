@@ -1,0 +1,15 @@
+DL3002,warning,Last USER should not be root
+DL3006,warning,Always tag the version of an image explicitly
+DL3007,warning,Using latest is prone to errors if the image will ever update. Pin the version explicitly to a release tag
+DL3009,info,Delete the apt-get lists after installing something
+DL3010,info,Use `ADD` for extracting archives into an image
+DL3011,error,Valid UNIX ports range from 0 to 65535
+DL3015,info,Avoid additional packages by specifying `--no-install-recommends`
+DL3019,info,Use the `--no-cache` switch to avoid the need to use `--update` and remove `/var/cache/apk/*` when done installing packages
+DL3020,error,Use COPY instead of ADD for files and folders
+DL3026,error,Use only an allowed registry in the FROM image
+DL3029,warning,Do not use --platform flag with FROM
+DL3042,warning,Avoid use of cache directory with pip. Use `pip install --no-cache-dir <package>`
+DL3046,warning,`useradd` without flag `-l` and high UID will result in excessively large Image.
+DL3047,info,Avoid use of wget without progress bar. Use `wget --progress=dot:giga <url>`. Or consider using `-q` or `-nv` (shorthands for `--quiet` or `--no-verbose`).
+DL3059,info,Multiple consecutive `RUN` instructions. Consider consolidation.

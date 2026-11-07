@@ -1,0 +1,70 @@
+Names only in file 1:
+/etc/default/docker file
+/etc/sysconfig/docker file
+AOS Storage Driver
+Authorization for Docker client commands
+Base device size
+Centralized and remote logging
+Container Host Hardening
+Containers restricted from acquiring new privileges
+Default cgroup usage
+Default ulimit
+Docker Auditing
+Docker Base Image Trust
+Docker Configuration
+Docker Daemon
+Docker Daemon Configuration
+Docker Shim Runc V1 Auditing
+Docker Shim Runc V2 Auditing
+Docker Socket Configuration
+Docker Socket File Ownership
+Docker server certificate file ownership
+Docker socket file
+Live restore
+No new privileges
+Registry Certificate Files
+TLS Authentication
+TLS CA certificate file ownership
+TLS CA certificate file permissions
+Trusted base images
+Unnecessary packages
+User creation
+User namespace support
+daemon.json file
+registry certificate file permissions
+seccomp profile
+
+Names only in file 2:
+/etc/default/docker file ownership
+/etc/docker/certs.d
+/etc/sysconfig/docker file permissions
+ASोस Storage Driver
+Base Device Size
+Centralized Logging
+Cgroup Usage Confirmation
+Container Host Security
+Container Privilege Restriction
+Containerd socket file
+Containerization Security
+Daemon.json file ownership
+Devicemapper Storage Driver
+Docker Daemon Non-Root
+Docker Server Certificate
+Docker Service Ownership
+Docker Socket Ownership
+Docker Socket Permissions
+Docker Version
+Docker server certificate key file permissions
+Docker socket file ownership
+Images are scanned and rebuilt
+Live Restore
+Seccomp Profile
+Security Registries
+Server Version Information
+TLS CA Certificate
+Ulimit Configuration
+User Access Control
+User Namespace Support
+User for the container
+Userland Proxy
+iptables
