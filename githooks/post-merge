@@ -1,0 +1,58 @@
+#!/bin/sh
+# COMP 5/6120 - Secure Software Process - Task-4 requirement:
+# "A post-merge hook to ensure all dependencies are updated."
+#
+# Installed into .git/hooks/post-merge by install.py. Runs after every
+# `git pull` / `git merge` so nobody tests against stale packages.
+#
+# The Gemma model needs torch + transformers (~2 GB), so a full install is only
+# triggered when requirements.txt actually changed, or when nothing is installed
+# yet. Otherwise the hook runs the fast checks only.
+
+set -u
+ROOT="$(git rev-parse --show-toplevel 2>/dev/null)" || exit 0
+cd "$ROOT" || exit 0
+
+PY="${PYTHON:-python3}"
+command -v "$PY" >/dev/null 2>&1 || PY=python
+command -v "$PY" >/dev/null 2>&1 || { echo "[post-merge] no python on PATH, skipping"; exit 0; }
+
+echo "[post-merge] checking dependencies ..."
+
+# 1. requirements.txt touched by this merge?  git reflog 1 is "pull" for a merge.
+if git diff --name-only HEAD@{1} HEAD 2>/dev/null | grep -q '^requirements.txt$'; then
+    CHANGED=1
+else
+    CHANGED=0
+fi
+
+# 2. Anything installed at all?
+HAVE_ALL=1
+for mod in pypdf yaml pandas; do
+    "$PY" -c "import $mod" >/dev/null 2>&1 || HAVE_ALL=0
+done
+
+if [ "$CHANGED" -eq 1 ] || [ "$HAVE_ALL" -eq 0 ]; then
+    echo "[post-merge] requirements.txt changed or packages missing -> pip install -r requirements.txt"
+    "$PY" -m pip install -r requirements.txt || {
+        echo "[post-merge] WARNING: pip install failed; fix before running the tests"
+        exit 0
+    }
+else
+    echo "[post-merge] requirements.txt unchanged, packages present"
+fi
+
+# 3. Hadolint is a system binary, not a pip package: only warn.
+if ! command -v hadolint >/dev/null 2>&1 && [ -z "${HADOLINT:-}" ]; then
+    echo "[post-merge] WARNING: hadolint not on PATH (Task-3 needs it):"
+    echo "             https://github.com/hadolint/hadolint#install"
+fi
+
+# 4. Fast smoke test so a broken merge is visible immediately.
+if command -v "$PY" >/dev/null 2>&1 && [ -d task1_extractor ]; then
+    echo "[post-merge] running tests ..."
+    "$PY" -m pytest -q task1_extractor/test_extractor.py task2_comparator/test_comparator.py task3_executor/test_executor.py \
+        || echo "[post-merge] WARNING: tests failed after merge"
+fi
+
+exit 0

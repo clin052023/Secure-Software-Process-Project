@@ -1,5 +1,24 @@
-pypdf
-pyyaml
-torch
-transformers
-accelerate
+# COMP 5/6120 - Secure Software Process - Project requirements
+# Install with:  pip install -r requirements.txt
+#
+# Python 3.9+ (tested on 3.11 and 3.12).
+
+# --- Task-1 Extractor ------------------------------------------------------
+pypdf==6.1.1                 # read the two/three CIS benchmark PDFs
+PyYAML==6.0.2                # parse the LLM output, write the KDE YAML files
+torch==2.8.0                 # Gemma-3-1B inference (CUDA build if you have a GPU)
+transformers==4.57.1         # Hugging Face pipeline for google/gemma-3-1b-it
+accelerate==1.10.1           # device_map="auto" (GPU if there is room, else CPU)
+huggingface-hub==0.35.3      # HF_TOKEN / gated-model download
+
+# --- Task-3 Executor -------------------------------------------------------
+pandas==2.2.3                # hadolint_results.csv
+# Hadolint is NOT a Python package. Install the binary separately and put it on
+# PATH:  https://github.com/hadolint/hadolint#install
+# (Windows: choco install hadolint  |  macOS: brew install hadolint)
+
+# --- Tests only ------------------------------------------------------------
+fpdf2==2.8.5                 # test fixtures build small PDFs on the fly
+
+# --- Packaging (Task-4 binary only) ---------------------------------------
+pyinstaller==6.16.0
