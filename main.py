@@ -1,6 +1,6 @@
 '''
 Courtney Lin, Nicholas Marden
-COMP 5/6120 - Secure Software Process
+COMP 5/6700 - Secure Software Process
 Project Runner (Tasks 1-3 in one command)
 
 Usage:
