@@ -2,6 +2,8 @@
 
 **COMP 5/6120 — Secure Software Process**
 
+| | |
+|---|---|
 | **Names** | Courtney Lin, Nicholas Marden |
 | **Banner IDs** | 904315203, 904289055 |
 | **Emails** | cll0070@auburn.edu, nlm0021@auburn.edu |
@@ -20,7 +22,9 @@ Secure-Software-Process-Project/
 ├── requirements.txt
 ├── PROMPT.md                      # the prompts given to the LLM
 ├── install.py                     # installs the post-merge git hook
+├── Refilter Results.py            # re-apply the rule restriction to an old CSV
 ├── build_binary.py                # builds the Task-4 executable
+├── ci/report.py                   # pass/fail table in the Actions summary
 ├── .github/workflows/tests.yml    # GitHub Action: runs the tests
 ├── githooks/post-merge            # dependency check after `git pull`
 ├── task1_extractor/
@@ -211,11 +215,78 @@ python3 -m pytest -q            # all three task suites
 
 ### GitHub Action — pass/fail report
 
-`.github/workflows/tests.yml` runs on every push and pull request to `main`:
-Ubuntu and Windows × Python 3.11 and 3.12, installs Hadolint, then runs each
-task's suite as a separate step so a failure names the task. `torch` and
-`transformers` are not installed in CI — `extractor.py` imports them lazily, so
-the unit tests run in seconds.
+`.github/workflows/tests.yml` runs on every push, every pull request, and on
+manual dispatch: Ubuntu and Windows × Python 3.11 and 3.12, installs Hadolint,
+then runs each task's suite as a separate step so a failure names the task.
+`torch` and `transformers` are not installed in CI — `extractor.py` imports them
+lazily, so the unit tests run in seconds (23/23 pass with torch and transformers
+unimportable). Each suite writes JUnit XML; `ci/report.py` turns those into a
+pass/fail table in the run summary and fails the job if any suite is red or
+missing. The XML is uploaded as a build artifact.
+
+A GitHub Action cannot see a local `git pull`, so the workflow covers the
+repository side and `githooks/post-merge` covers the developer's machine.
+
+### Only the rules named in the TEXT file are reported
+
+Task-3 requires the tool to run "only on the rules that are in the TEXT file".
+Hadolint has no `--only`, so the unmapped Dockerfile rules are switched off with
+`--ignore` (one flag per rule, from the 66-rule table in `executor.py`).
+
+ShellCheck rules cannot be switched off that way: their codes (`SC2086`,
+`SC2028`, … 165 of them in a full scan) are not in the rule table, so there is
+nothing to enumerate and ignore. They are therefore removed from the results
+after the scan, in `run_hadolint()`, whenever a mapping exists. Without that step
+roughly a sixth of the CSV is rules the TEXT file never named.
+
+When the mapper returns `NO MAPPING FOUND` or `NO DIFFERENCES FOUND`, every rule
+runs and nothing is dropped — that is what the task specifies for that case.
+
+A results CSV produced before this restriction was added still carries those
+rules. Rather than re-scanning, re-apply it in place — the CSV is aggregated per
+`(FilePath, RULEID)`, so filtering rows is arithmetically identical to a scan
+with the restriction applied:
+
+```bash
+python3 "Refilter Results.py" --dry-run     # report only
+python3 "Refilter Results.py"               # every results/Input-*/ folder
+python3 "Refilter Results.py" results/Input-3
+```
+
+Troubleshooting the workflow:
+
+| Summary says | Real cause | Fix |
+|---|---|---|
+| all three **did not run** | the job died before the first test step; the report step runs with `if: always()`, so it still prints after the job is broken. Scroll up to the first red step | that red step is the bug, not the report |
+| `Maximum call stack size exceeded` in `setup-python` | `cache: pip` globbed the whole workspace for requirements files; a checked-in Dockerfile dataset (hundreds of thousands of files) overflows the Node call stack | `cache-dependency-path: requirements.txt` pins the glob (already set); never commit the dataset |
+| `Node.js 20 is deprecated` | action major version too old | `checkout@v5`, `setup-python@v6`, `upload-artifact@v5` (already set) |
+| `hadolint: command not found` | binary not installed, or `$GITHUB_PATH` expected to apply within the same step | the Windows step calls it by full path; on Linux it goes to `/usr/local/bin` |
+| Task-3 green but **Skipped = 5** | Hadolint missing, so the five Hadolint tests skipped themselves | check the Hadolint install step |
+| `curl: (23) Permission denied` on Linux | writing to `/usr/local/bin` without `sudo` | `sudo curl` + `sudo chmod` (already set) |
+| one Task-3 test red **on Windows only**, `RuntimeError: Could not run Hadolint: [WinError 193]` | a test double was a `.py` file run directly; Windows ignores the shebang | `run_hadolint(hadolint_cmd=...)` accepts a sequence, so the double runs as `[sys.executable, script]` (already set) |
+| `failures.csv` paths use `\` on Windows, `/` elsewhere | `os.path.join` uses the platform separator | failure paths are normalised to `/`, matching `FilePath` in the results CSV (already set) |
+| `remote: error: GH001: Large files detected` | dataset or generated CSV committed | they are in `.gitignore`; `git rm --cached` any that slipped in |
+
+### Putting the project on GitHub (first time)
+
+```powershell
+cd "path\to\Secure-Software-Process-Project"
+git init -b main
+git add .
+git commit -m "COMP 5700/6700 secure software process project"
+git remote add origin https://github.com/<user>/<repo>.git
+git push -u origin main
+```
+
+Then on github.com: **Settings -> General -> Danger Zone -> Change visibility
+-> Public** (the task requires a public repository), and **Actions -> Enable
+workflow** if the run did not start by itself. The workflow appears under the
+**Actions** tab as *tests*; open the run and its **Summary** for the pass/fail
+table, or a red step for the failing assertion.
+
+Requirements this satisfies: public repository, GitHub Action file with logs of
+test-case execution, `requirements.txt`, and a binary buildable with
+`python3 build_binary.py`.
 
 ### Post-merge hook — dependencies stay current
 

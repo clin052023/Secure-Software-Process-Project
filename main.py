@@ -122,6 +122,10 @@ def _run_pair(doc_a, doc_b, label, out_dir, dockerfiles_source):
         csv_path = executor.write_summary_csv(findings, "hadolint_results.csv")
         print(f"  {label}: {csv_path} ({len(findings)} finding(s) across "
               f"{findings['FilePath'].nunique()} Dockerfile(s))")
+        dropped = findings.attrs.get("out_of_scope_dropped") or 0
+        if dropped:
+            print(f"  {label}: {dropped} finding(s) outside the TEXT file's rules "
+                  f"were dropped (Task-3: run the tool only on those rules)")
 
         failures = findings.attrs.get("failures") or []
         if failures:

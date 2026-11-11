@@ -39,12 +39,14 @@ except ImportError:                     # plain script run from inside the folde
 
 try:                                    # `python3 -m unittest ...` (package import)
     from .executor import (read_difference_files, map_differences_to_rules,
-                           run_hadolint, write_summary_csv, write_failure_csv, RULES,
+                           run_hadolint, write_summary_csv, write_failure_csv,
+                           refilter_results_csv, RULES,
                            HADOLINT_WORKERS, HADOLINT_WORKERS_ENV, _resolve_workers,
                            NO_DIFFERENCES, NO_MAPPING)
 except ImportError:                     # plain script run from inside the folder
     from executor import (read_difference_files, map_differences_to_rules,
-                          run_hadolint, write_summary_csv, write_failure_csv, RULES,
+                          run_hadolint, write_summary_csv, write_failure_csv,
+                          refilter_results_csv, RULES,
                           HADOLINT_WORKERS, HADOLINT_WORKERS_ENV, _resolve_workers,
                           NO_DIFFERENCES, NO_MAPPING)
 
@@ -494,6 +496,50 @@ class TestExecutorFunctions(unittest.TestCase):
         self.assertIn("Index too large", text)
 
 
+    def test_out_of_scope_rules_are_dropped(self):
+
+        # Task-3: "run the tool only on the rules that are in the TEXT file".
+        # ShellCheck codes cannot be switched off with --ignore because RULES does
+        # not enumerate them, so they are dropped from the results instead. A
+        # Dockerfile that trips SC2086 and DL3008 must contribute only DL3008.
+        cmd = hadolint_command()
+        if cmd is None:
+            self.skipTest("Hadolint is not installed; set HADOLINT or add it to PATH.")
+
+        os.makedirs("scan", exist_ok=True)
+        with open(os.path.join("scan", "Dockerfile"), "w") as f:
+            # SC2086 (unquoted $x) and DL3008 (apt-get without a version pin).
+            f.write("FROM ubuntu:20.04\n"
+                    "USER app\n"
+                    "RUN apt-get update && apt-get install -y curl $PKG\n")
+        with open("hadolint_rules.txt", "w") as f:
+            f.write("DL3008\n")
+
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            df = run_hadolint(dockerfiles_source="scan", hadolint_cmd=cmd)
+
+        self.assertIn("DL3008", set(df["RULEID"]))
+        self.assertNotIn("SC2086", set(df["RULEID"]))
+        self.assertTrue(all(r.startswith("DL") for r in set(df["RULEID"])),
+                        set(df["RULEID"]))
+        self.assertGreater(df.attrs["out_of_scope_dropped"], 0)
+
+        # And nothing out of scope reaches the deliverable.
+        write_summary_csv(df, "results.csv")
+        with open("results.csv") as f:
+            rules = {line.split(",")[2] for line in f.read().splitlines()[1:]}
+        self.assertEqual(rules, {"DL3008"})
+
+        # NO MAPPING keeps every rule: the filter must not empty the results.
+        with open("hadolint_rules.txt", "w") as f:
+            f.write(NO_MAPPING + "\n")
+        with contextlib.redirect_stdout(io.StringIO()):
+            everything = run_hadolint(dockerfiles_source="scan", hadolint_cmd=cmd)
+        self.assertEqual(everything.attrs["out_of_scope_dropped"], 0)
+        self.assertIn("SC2086", set(everything["RULEID"]))
+
+
     def test_dockerfile_detection_ignores_source_files(self):
 
         # Running from the project folder means every .py, .txt, .zip and .pdf
@@ -535,6 +581,41 @@ class TestExecutorFunctions(unittest.TestCase):
         with zipfile.ZipFile("dockerfiles.zip", "w") as zf:
             zf.write("Dockerfile", "Dockerfile")
         self.assertFalse(_looks_like_dockerfile("dockerfiles.zip"))
+
+
+    def test_refilter_results_csv(self):
+
+        # A results CSV written before the restriction existed still carries the
+        # ShellCheck rules, which --ignore cannot suppress. Re-filtering it has to
+        # give exactly what a re-scan would: same rows kept, same counts.
+        with open("hadolint_results.csv", "w", newline="") as f:
+            f.write("FilePath,DefaultSeverity,RULEID,COUNT\n"
+                    "a/Dockerfile,warning,DL3008,2\n"
+                    "a/Dockerfile,info,SC2086,5\n"
+                    "a/Dockerfile,ignore,DL3057,1\n"
+                    "b/Dockerfile,error,DL3020,1\n")
+        with open("hadolint_rules.txt", "w") as f:
+            f.write("DL3008\nDL3020\n")
+
+        self.assertEqual(refilter_results_csv("hadolint_results.csv",
+                                              "hadolint_rules.txt", dry_run=True),
+                         (2, 2))
+        with open("hadolint_results.csv") as f:
+            self.assertEqual(len(f.read().splitlines()), 5)      # dry run wrote nothing
+
+        self.assertEqual(refilter_results_csv("hadolint_results.csv",
+                                              "hadolint_rules.txt"), (2, 2))
+        with open("hadolint_results.csv") as f:
+            rows = f.read().splitlines()
+        self.assertEqual(rows[0], "FilePath,DefaultSeverity,RULEID,COUNT")
+        self.assertEqual(rows[1:], ["a/Dockerfile,warning,DL3008,2",
+                                    "b/Dockerfile,error,DL3020,1"])
+
+        # NO MAPPING means all rules are in scope: nothing may be dropped.
+        with open("hadolint_rules.txt", "w") as f:
+            f.write(NO_MAPPING + "\n")
+        self.assertEqual(refilter_results_csv("hadolint_results.csv",
+                                              "hadolint_rules.txt"), (2, 0))
 
 
     def test_write_summary_csv(self):

@@ -753,11 +753,28 @@ def run_hadolint(rules_txt_path="hadolint_rules.txt",
         if cleanup:
             shutil.rmtree(cleanup, ignore_errors=True)
 
+    # Task-3: "run the tool ONLY ON THE RULES THAT ARE IN THE TEXT FILE". Hadolint
+    # has no --only, so the unmapped Dockerfile rules are switched off with --ignore
+    # (see _selection_args). ShellCheck rules cannot be switched off that way: their
+    # codes (SC2086, SC2028, ...) are not in the RULES table, so there is nothing to
+    # enumerate and ignore. They would therefore leak into the results and roughly a
+    # sixth of the CSV would be rules the TEXT file never named. Dropping them here
+    # is the only place the restriction can be completed.
+    if restrict:
+        before = len(rows)
+        rows = [row for row in rows if row["RULEID"] in rule_ids]
+        dropped = before - len(rows)
+    else:
+        dropped = 0
+
     frame = pd.DataFrame(rows, columns=["FilePath", "Line", "Column", "RULEID",
                                         "Severity", "Message"])
     # Attached so a partial scan is never silently presented as a complete one.
     frame.attrs["failures"] = [(os.path.relpath(path, root).replace(os.sep, "/"),
                                 message) for path, message in failures]
+    # How many out-of-scope findings the restriction removed, so the run can say so
+    # instead of the numbers silently not matching a scan with all rules.
+    frame.attrs["out_of_scope_dropped"] = dropped
     frame.attrs["dockerfiles_scanned"] = len(dockerfiles) - len(failures)
     return frame
 
@@ -846,6 +863,36 @@ def _format_duration(seconds):
         return f"{minutes}m{seconds:02d}s"
     hours, minutes = divmod(minutes, 60)
     return f"{hours}h{minutes:02d}m"
+
+
+def refilter_results_csv(csv_path="hadolint_results.csv",
+                         rules_txt_path="hadolint_rules.txt",
+                         dry_run=False):
+    # Re-applies the "only the rules in the TEXT file" restriction to a results
+    # CSV that was written before run_hadolint() dropped out-of-scope findings.
+    # The CSV holds one row per (FilePath, RULEID) with a COUNT, so removing the
+    # rows for other rules is arithmetically identical to re-scanning with the
+    # restriction in place - seconds instead of a full Hadolint run.
+    # Returns (rows_kept, rows_dropped). Nothing is dropped when the TEXT file
+    # says NO MAPPING FOUND / NO DIFFERENCES FOUND, because then every rule is in
+    # scope (Task-3 says to run the tool with all rules in that case).
+    rule_ids, restrict = _read_rule_selection(rules_txt_path)
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        reader = csv.DictReader(f)
+        fieldnames = reader.fieldnames or []
+        rows = list(reader)
+
+    if not restrict:
+        return len(rows), 0
+
+    kept = [row for row in rows if row.get("RULEID") in rule_ids]
+    dropped = len(rows) - len(kept)
+    if dropped and not dry_run:
+        with open(csv_path, "w", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(f, fieldnames=fieldnames)
+            writer.writeheader()
+            writer.writerows(kept)
+    return len(kept), dropped
 
 
 def write_failure_csv(failures, csv_path="hadolint_failures.csv"):
