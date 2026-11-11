@@ -673,7 +673,11 @@ def run_hadolint(rules_txt_path="hadolint_rules.txt",
                 "requirements documents for Task-1."
             )
 
-        args = [hadolint_cmd, "--no-fail", "--no-color", "-f", "json"]
+        # hadolint_cmd may be a sequence, e.g. [sys.executable, "wrapper.py"], so a
+        # test double can be run as a script. Windows cannot execute a .py file
+        # directly the way Linux honours a shebang, so a bare path would fail there.
+        prefix = list(hadolint_cmd) if isinstance(hadolint_cmd, (list, tuple)) else [hadolint_cmd]
+        args = prefix + ["--no-fail", "--no-color", "-f", "json"]
         if restrict:
             args += _selection_args(rule_ids)
         else:
@@ -822,7 +826,10 @@ def _scan_batch(args, batch, timeout, failures, root):
         return rows
 
     if len(batch) == 1:
-        failures.append((batch[0], error))
+        # Forward slashes, like every FilePath in the results CSV. os.path.join
+        # uses "\\" on Windows, and the failures file has to be joinable against
+        # the results by path.
+        failures.append((batch[0].replace(os.sep, "/"), error))
         return []
 
     middle = len(batch) // 2

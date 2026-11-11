@@ -444,7 +444,6 @@ class TestExecutorFunctions(unittest.TestCase):
         wrapper = "crashing-hadolint.py"
         with open(wrapper, "w") as f:
             f.write(
-                "#!%s\n"
                 "import subprocess, sys\n"
                 "args = sys.argv[1:]\n"
                 "files = [a for a in args if not a.startswith('-')]\n"
@@ -454,9 +453,12 @@ class TestExecutorFunctions(unittest.TestCase):
                 "    sys.stderr.write('CallStack (from HasCallStack):\\n')\n"
                 "    sys.exit(1)\n"
                 "sys.exit(subprocess.run([%r] + args).returncode)\n"
-                % (sys.executable, poison.split('/')[-1], cmd)
+                % (poison.split('/')[-1], cmd)
             )
-        os.chmod(wrapper, 0o755)
+        # Run it through this interpreter rather than relying on the shebang:
+        # Windows cannot execute a .py file directly, so `os.path.abspath(wrapper)`
+        # alone is a FileNotFoundError / WinError 193 there.
+        wrapper_cmd = [sys.executable, os.path.abspath(wrapper)]
 
         for i in range(300):
             folder = os.path.join("mixed", f"svc{i // 100}")
@@ -471,7 +473,7 @@ class TestExecutorFunctions(unittest.TestCase):
         out = io.StringIO()
         with contextlib.redirect_stdout(out):
             df = run_hadolint(dockerfiles_source="mixed",
-                              hadolint_cmd=os.path.abspath(wrapper))
+                              hadolint_cmd=wrapper_cmd)
 
         failures = df.attrs["failures"]
         self.assertEqual([p for p, _ in failures], [poison])
