@@ -1,0 +1,108 @@
+# COMP 5/6700 - Secure Software Process - Task-4:
+#   "Create a GitHub Action workflow so that every time a user ... types
+#    `git pull`, all test cases created in Task-1, Task-2, and Task-3 are
+#    executed automatically. All test cases must pass."
+#
+# Two mechanisms cover that requirement:
+#   1. this workflow       -> runs on push / pull request / manual dispatch (GitHub side)
+#   2. githooks/post-merge -> runs on `git pull` / `git merge` on the developer's
+#      machine (GitHub cannot see a local pull). Install once with `python3 install.py`.
+#
+# Each task is its own step with `continue-on-error`, so one red suite does not
+# hide the other two; ci/report.py then writes a pass/fail table to the run
+# summary and fails the job if anything is red or never ran.
+name: tests
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: pytest (${{ matrix.os }}, Python ${{ matrix.python-version }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false          # let every combination report, not just the first
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        python-version: ["3.11", "3.12"]
+
+    steps:
+      # Action versions here are all Node 24 native. keep them current: the
+      # Node 20 runners are gone and an old action aborts the job before any
+      # test runs, which the summary shows as "did not run" for every suite.
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          # Pin the cache key input. Without this, setup-python globs the whole
+          # workspace for requirements files; a checked-in Dockerfile dataset
+          # (hundreds of thousands of files) makes that recursion overflow the
+          # Node call stack -> "Maximum call stack size exceeded", job dead
+          # before the first test step.
+          cache-dependency-path: requirements.txt
+
+      # torch and transformers are deliberately NOT installed: they are ~2 GB and
+      # extractor.py imports them lazily, inside gemma_3_1b(). The unit tests of
+      # the parsing, prompt and comparison code run without them (verified:
+      # 23/23 pass with torch and transformers unimportable).
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # Versions mirror requirements.txt so CI and a local install match.
+          # pytest is pinned to 8.4.2 (9.x needs Python 3.10+).
+          python -m pip install pypdf==6.1.1 PyYAML==6.0.2 pandas==2.2.3 fpdf2==2.8.5 pytest==8.4.2
+
+      # Task-3 shells out to Hadolint, so the test job needs the real binary.
+      - name: Install Hadolint (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          sudo curl -sSL -o /usr/local/bin/hadolint \
+            https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Linux-x86_64
+          sudo chmod +x /usr/local/bin/hadolint
+          hadolint --version
+
+      - name: Install Hadolint (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Invoke-WebRequest -Uri "https://github.com/hadolint/hadolint/releases/download/v2.12.0/hadolint-Windows-x86_64.exe" -OutFile "$env:RUNNER_TEMP\hadolint.exe"
+          Add-Content -Path $env:GITHUB_PATH -Value $env:RUNNER_TEMP
+          # GITHUB_PATH only affects later steps, so call it by full path here.
+          & "$env:RUNNER_TEMP\hadolint.exe" --version
+
+      - name: Task-1 Extractor tests
+        continue-on-error: true
+        run: python -m pytest task1_extractor/test_extractor.py -v --junitxml=reports/task-1.xml
+
+      - name: Task-2 Comparator tests
+        continue-on-error: true
+        run: python -m pytest task2_comparator/test_comparator.py -v --junitxml=reports/task-2.xml
+
+      - name: Task-3 Executor tests
+        continue-on-error: true
+        run: python -m pytest task3_executor/test_executor.py -v --junitxml=reports/task-3.xml
+
+      - name: Task-4 build script sanity check
+        continue-on-error: true
+        run: python build_binary.py --dry-run
+
+      # Always runs, so a red suite still produces the report the task asks for.
+      - name: Pass/fail report
+        if: always()
+        run: python ci/report.py
+
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: test-logs-${{ matrix.os }}-py${{ matrix.python-version }}
+          path: reports/*.xml
+          if-no-files-found: ignore

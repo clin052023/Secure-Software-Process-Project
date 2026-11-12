@@ -33,7 +33,10 @@ def _read(path):
     errors = int(suite.get("errors", 0))
     skipped = int(suite.get("skipped", 0))
     seconds = float(suite.get("time", 0.0))
-    return tests, tests - failures - errors - skipped, failures, errors, skipped, seconds
+    # Name the red tests: "1 failed" alone sends the reader back through the log.
+    red = [case.get("name") for case in suite.iter("testcase")
+           if case.find("failure") is not None or case.find("error") is not None]
+    return tests, tests - failures - errors - skipped, failures, errors, skipped, seconds, red
 
 
 def main():
@@ -41,10 +44,10 @@ def main():
     for key, label in TASKS:
         path = os.path.join("reports", f"{key}.xml")
         if not os.path.isfile(path):
-            rows.append((label, "**did not run**", "-", "-", "-", "-"))
+            rows.append((label, "**did not run**", "-", "-", "-", "-", "-", []))
             failed = True
             continue
-        tests, passed, failures, errors, skipped, seconds = _read(path)
+        tests, passed, failures, errors, skipped, seconds, red = _read(path)
         green = failures == 0 and errors == 0 and tests > 0
         failed = failed or not green
         rows.append((
@@ -53,13 +56,36 @@ def main():
             tests,
             passed,
             failures + errors,
+            skipped,
             f"{seconds:.2f}s",
+            red,
         ))
 
     out = ["", "## Test results", "",
-           "| Suite | Result | Tests | Passed | Failed | Time |",
-           "|---|---|---|---|---|---|"]
-    out += [f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | {r[5]} |" for r in rows]
+           "| Suite | Result | Tests | Passed | Failed | Skipped | Time |",
+           "|---|---|---|---|---|---|---|"]
+    out += [f"| {r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]} | {r[5]} | {r[6]} |"
+            for r in rows]
+    if any("did not run" in row for row in (r[1] for r in rows)):
+        out += ["",
+                "A suite reported **did not run**, which means its JUnit XML was never "
+                "written: the step crashed or the job stopped before it. Scroll up to "
+                "the first red step above this one, that is the real failure. "
+                "This report step runs with `if: always()`, so it still executes after "
+                "the job is already broken."]
+
+    if any(r[7] for r in rows):
+        out += ["", "Failing tests:"]
+        out += [f"- `{r[0]}`: `{name}`" for r in rows for name in r[7]]
+
+    if any(r[5] not in ("-", 0) for r in rows):
+        out += ["",
+                "Non-zero **Skipped** means Hadolint was not found, and the six "
+                "Hadolint-dependent tests in Task-3 skipped themselves. They skip "
+                "rather than fail so the suite is usable without the binary, but a "
+                "green run with skips is weaker evidence: check the Hadolint install "
+                "step in this log."]
+
     text = "\n".join(out) + "\n"
 
     summary = os.environ.get("GITHUB_STEP_SUMMARY")

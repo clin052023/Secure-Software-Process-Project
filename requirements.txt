@@ -1,7 +1,9 @@
-# COMP 5/6120 - Secure Software Process - Project requirements
+# COMP 5/6700 - Secure Software Process - Project requirements
 # Install with:  pip install -r requirements.txt
 #
 # Python 3.9+ (tested on 3.11 and 3.12).
+# Versions are pinned so a fresh install reproduces the tested environment.
+# pytest is held at 8.4.2 because pytest 9.x requires Python 3.10+.
 
 # --- Task-1 Extractor ------------------------------------------------------
 pypdf==6.1.1                 # read the two/three CIS benchmark PDFs
@@ -18,6 +20,7 @@ pandas==2.2.3                # hadolint_results.csv
 # (Windows: choco install hadolint  |  macOS: brew install hadolint)
 
 # --- Tests only ------------------------------------------------------------
+pytest==8.4.2                # task1/2/3 suites (last release supporting Python 3.9)
 fpdf2==2.8.5                 # test fixtures build small PDFs on the fly
 
 # --- Packaging (Task-4 binary only) ---------------------------------------
